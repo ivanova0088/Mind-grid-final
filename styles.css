@@ -14,7 +14,7 @@ body{
   color:var(--fg);
 }
 
-/* ======= Header ======= */
+/* Header */
 header{
   position:sticky; top:0; z-index:5;
   padding:12px 16px;
@@ -26,7 +26,7 @@ header{
 h1{margin:0;font-size:18px}
 .spacer{flex:1}
 
-/* ======= Layout ======= */
+/* Layout */
 main{max-width:1100px;margin:auto;padding:18px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
 .card.soft{background:#fff; border-style:dashed}
@@ -50,14 +50,15 @@ button,.btn{cursor:pointer}
 .active{display:block}
 .input,.select{width:100%}
 
-/* ======= Odyssey ======= */
+/* Odyssey */
 .stage-tag{font-weight:800;color:var(--primary)}
 .od-clue{font-size:16px;line-height:1.7}
 .od-meta{border:1px dashed var(--line);border-radius:12px;padding:10px}
 #odFeedback.ok{color:var(--good)}
 #odFeedback.err{color:var(--bad)}
 
-/* ======= Crossword (Newspaper) ======= */
+/* Crossword Grid */
+#scrCrossword{padding-bottom:260px} /* مساحة للـBottom Sheet */
 .cw-grid{
   display:grid;
   grid-template-columns:repeat(9,38px);
@@ -84,11 +85,7 @@ button,.btn{cursor:pointer}
   font-weight:800;
   text-transform:uppercase;
 }
-.cw-block{
-  background:#111;
-  border-color:#111;
-}
-
+.cw-block{ background:#111; border-color:#111; }
 .cw-letter{
   width:100%; height:100%;
   border:none; outline:none;
@@ -101,20 +98,61 @@ button,.btn{cursor:pointer}
   caret-color:var(--primary);
 }
 .cw-block .cw-letter{ display:none; }
-
 .cw-number{
-  position:absolute;
-  top:2px; right:4px;
-  font-size:10px;
-  color:#555;
-  pointer-events:none;
+  position:absolute; top:2px; right:4px;
+  font-size:10px; color:#555; pointer-events:none;
 }
-
 .cw-active{ outline:2px solid var(--primary); }
 .cw-highlight{ background:rgba(13,71,161,0.10); }
 .cw-correct{ background:rgba(27,138,60,0.12); }
 .cw-wrong{ background:rgba(176,0,32,0.10); }
 
-.cw-clues{ max-height:260px; overflow:auto; padding-inline-start:22px; }
-.cw-clues li{ margin:4px 0; line-height:1.5 }
-.cw-clues li.active{ background:rgba(0,188,212,0.12); border-radius:8px; padding:2px 6px }
+/* Bottom Sheet + Cards */
+.cw-sheet{
+  position:fixed; left:0; right:0; bottom:0; z-index:20;
+  transform:translateY(calc(100% - 64px));
+  transition:transform .25s ease;
+}
+.cw-sheet[data-open="1"]{ transform:translateY(0); }
+
+.cw-sheet-handle{
+  background:#fff;
+  border:1px solid var(--line); border-bottom:none;
+  border-top-left-radius:16px; border-top-right-radius:16px;
+  padding:10px 12px;
+  display:flex; gap:8px; align-items:center;
+  box-shadow:0 -6px 24px rgba(0,0,0,.06);
+}
+.chip{ background:#f1f3f5; border:1px solid var(--line); border-radius:999px; padding:4px 8px; font-size:12px }
+.cw-sheet .clue-text{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; font-weight:700}
+
+.cw-sheet-body{
+  background:#fff;
+  border-top:1px solid var(--line);
+  padding:12px;
+  box-shadow:0 -8px 32px rgba(0,0,0,.08);
+}
+
+.seg{ display:flex; gap:6px; justify-content:center; }
+.seg-btn{ border-radius:999px; padding:6px 12px; }
+.seg-btn.active{ background:var(--primary); color:#fff; border-color:var(--primary); }
+
+.cw-cards{
+  display:flex; gap:12px;
+  overflow-x:auto;
+  padding:12px 4px;
+  scroll-snap-type:x mandatory;
+}
+.cw-card{
+  flex:0 0 85%;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+  scroll-snap-align:center;
+  box-shadow:0 2px 14px rgba(0,0,0,.04);
+}
+.cw-card.active{ outline:2px solid var(--primary); }
+.cw-card-num{ font-weight:900; font-size:12px; opacity:.6 }
+.cw-card-text{ font-size:16px; margin-top:6px; line-height:1.6 }
+.cw-card-meta{ font-size:12px; color:var(--muted); margin-top:4px }
