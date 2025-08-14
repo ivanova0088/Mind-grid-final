@@ -1,0 +1,38 @@
+name: Daily Crossword
+
+on:
+  schedule:
+    - cron: '5 0 * * *'   # يشغّل يوميًا 00:05 UTC
+  workflow_dispatch: {}    # تشغيل يدوي عند الحاجة
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Generate crossword JSON
+        run: |
+          python scripts/generate_crossword.py
+
+      - name: Commit & push changes (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/crossword_daily.json
+          git diff --cached --quiet || git commit -m "chore: auto-update crossword $(date -u +'%Y-%m-%d')"
+          git push
