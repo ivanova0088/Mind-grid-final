@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=fix6">
+  <link rel="stylesheet" href="styles.css?v=fix7">
 </head>
 <body>
 <header>
@@ -129,26 +129,29 @@
       </div>
 
       <div id="cwBoard" class="cw-grid mt8" aria-label="لوحة الكلمات المتقاطعة"></div>
-
-      <div class="grid-2 mt8">
-        <div>
-          <h3 class="title">أفقيًا</h3>
-          <ol id="cwCluesAcross" class="cw-clues"></ol>
-        </div>
-        <div>
-          <h3 class="title">عموديًا</h3>
-          <ol id="cwCluesDown" class="cw-clues"></ol>
-        </div>
-      </div>
-
-      <div class="row center mt8">
-        <button class="btn" onclick="cwToggleDir()">تبديل الاتجاه</button>
-        <button class="btn" onclick="cwCheckWord()">تحقق (كلمة)</button>
-        <button class="btn" onclick="cwCheckAll()">تحقق (شبكة)</button>
-        <button class="btn" onclick="showScreen('games')">رجوع</button>
-      </div>
-
       <div id="cwFeedback" class="help mt8"></div>
+    </div>
+
+    <!-- Bottom-Sheet + Swipe Cards -->
+    <div class="cw-sheet" id="cwSheet" data-open="0">
+      <div class="cw-sheet-handle" onclick="cwToggleSheet()">
+        <div id="cwChipDir" class="chip">أفقي</div>
+        <div id="cwChipNum" class="chip">1</div>
+        <div id="cwChipLen" class="chip">(5)</div>
+        <div id="cwClueText" class="clue-text">—</div>
+      </div>
+      <div class="cw-sheet-body">
+        <div class="seg">
+          <button id="segAcross" class="seg-btn active" onclick="cwSetDir('across')">أفقي</button>
+          <button id="segDown" class="seg-btn" onclick="cwSetDir('down')">عمودي</button>
+        </div>
+        <div class="cw-cards" id="cwCards"></div>
+        <div class="row center mt8">
+          <button class="btn" onclick="cwPrev()">◀︎</button>
+          <button class="btn" onclick="cwCheckWord()">تحقق (كلمة)</button>
+          <button class="btn" onclick="cwNext()">▶︎</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -167,6 +170,6 @@
   </section>
 </main>
 
-<script defer src="app.js?v=fix6"></script>
+<script defer src="app.js?v=fix7"></script>
 </body>
 </html>
