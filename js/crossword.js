@@ -1,4 +1,4 @@
-/* ========= crossword.js (Smart Dock) ========= */
+/* ========= crossword.js ========= */
 import { $, showScreen, escapeHtml, matchAnswer, getWallet, setWallet } from './core.js';
 
 const CW_FALLBACK = {
@@ -13,10 +13,9 @@ const CW_FALLBACK = {
 
 let cw=null;
 
-/* ========== فتح اللعبة ========== */
 export async function openCrossword(){
   try{ await loadCrossword(); }
-  catch(e){ console.warn('CW error',e); buildCrossword(CW_FALLBACK); notify('(تجريبي) تم فتح شبكة احتياطية.'); }
+  catch(e){ console.warn('CW',e); buildCrossword(CW_FALLBACK); note('(تجريبي) تم فتح شبكة احتياطية.'); }
   showScreen('scrCrossword');
 }
 async function loadCrossword(){
@@ -26,7 +25,6 @@ async function loadCrossword(){
   buildCrossword(data);
 }
 
-/* ========== بناء الواجهة ========== */
 function buildCrossword(data){
   cw = {
     data, size:data.gridSize||(data.grid?.[0]?.length||9), dir:'across',
@@ -37,19 +35,9 @@ function buildCrossword(data){
   };
   if(cw.dateEl) cw.dateEl.textContent=data.date||'—';
 
-  // خرائط البداية والتغطية
-  (data.clues?.across||[]).forEach(s=>{
-    cw.slots.across.push(s);
-    cw.startMap.across.set(key(s.r,s.c),s.n);
-    for(let i=0;i<s.len;i++) cw.coverMap.across.set(key(s.r,s.c+i),s.n);
-  });
-  (data.clues?.down||[]).forEach(s=>{
-    cw.slots.down.push(s);
-    cw.startMap.down.set(key(s.r,s.c),s.n);
-    for(let i=0;i<s.len;i++) cw.coverMap.down.set(key(s.r+i,s.c),s.n);
-  });
+  (data.clues?.across||[]).forEach(s=>{ cw.slots.across.push(s); cw.startMap.across.set(key(s.r,s.c),s.n); for(let i=0;i<s.len;i++) cw.coverMap.across.set(key(s.r,s.c+i),s.n); });
+  (data.clues?.down||[]).forEach(s=>{ cw.slots.down.push(s); cw.startMap.down.set(key(s.r,s.c),s.n); for(let i=0;i<s.len;i++) cw.coverMap.down.set(key(s.r+i,s.c),s.n); });
 
-  // شبكة العرض
   const G=data.grid||Array.from({length:cw.size},()=>'.'.repeat(cw.size));
   cw.boardEl.innerHTML=''; cw.cells=Array.from({length:cw.size},()=>Array(cw.size).fill(null));
   for(let r=0;r<cw.size;r++){
@@ -71,23 +59,38 @@ function buildCrossword(data){
     }
   }
 
+  renderStrip();
   setDir('across');
-  if(cw.slots.across.length) selectSlot('across', cw.slots.across[0].n);
-  else if(cw.slots.down.length){ setDir('down'); selectSlot('down', cw.slots.down[0].n); }
+  const first=cw.slots.across[0]||cw.slots.down[0]; if(first) selectSlot('across', first.n);
   renderCards();
 }
 
-/* ========== بطاقة/قائمة التلميحات (Bottom Sheet) ========== */
-const dirLabel = d => d==='across'?'أفقي':'عمودي';
-export function cwToggleSheet(){ const sh=$('#cwSheet'); sh.dataset.open = (sh.dataset.open==='1'?'0':'1'); }
+/* شريط القصص لاختيار أي سؤال */
+function renderStrip(){
+  const strip=$('#cwStrip'); if(!strip) return;
+  const chips=[];
+  const add=(dir,arr)=>arr.forEach(s=>{
+    chips.push(`<button class="story-chip" data-dir="${dir}" data-n="${s.n}" title="${dirLabel(dir)} • ${s.len}">${s.n}</button>`);
+  });
+  add('across',cw.slots.across); add('down',cw.slots.down);
+  strip.innerHTML=chips.join('');
+  strip.onclick=e=>{
+    const b=e.target.closest('.story-chip'); if(!b) return;
+    const dir=b.dataset.dir, n=+b.dataset.n;
+    setDir(dir); selectSlot(dir,n);
+  };
+}
+
+const dirLabel=d=>d==='across'?'أفقي':'عمودي';
+export function cwToggleSheet(){ const sh=$('#cwSheet'); sh.dataset.open=(sh.dataset.open==='1'?'0':'1'); }
 export function cwPrev(){ const list=cw.slots[cw.dir]; if(!list?.length) return; const i=Math.max(0,(cw.sheetIndex||0)-1); selectSlot(cw.dir,list[i].n); }
 export function cwNext(){ const list=cw.slots[cw.dir]; if(!list?.length) return; const i=Math.min(list.length-1,(cw.sheetIndex||0)+1); selectSlot(cw.dir,list[i].n); }
 export function cwSetDir(d){ setDir(d); renderCards(); }
 function setDir(d){
   cw.dir=d;
-  $('#segAcross')?.classList.toggle('active', d==='across');
-  $('#segDown')?.classList.toggle('active', d==='down');
-  $('#cwChipDir') && ($('#cwChipDir').textContent = dirLabel(d));
+  $('#segAcross')?.classList.toggle('active',d==='across');
+  $('#segDown')?.classList.toggle('active',d==='down');
+  $('#cwChipDir') && ($('#cwChipDir').textContent=dirLabel(d));
   renderCards();
 }
 function renderCards(){
@@ -99,7 +102,7 @@ function renderCards(){
       <div class="cw-card-text">${escapeHtml(s.text||'')}</div>
       <div class="cw-card-meta">${dirLabel(cw.dir)} • (${s.len})</div>
     </div>`).join('');
-  cards.onclick=e=>{ const el=e.target.closest('.cw-card'); if(!el) return; selectSlot(cw.dir, +el.dataset.n); };
+  cards.onclick=e=>{ const el=e.target.closest('.cw-card'); if(!el) return; selectSlot(cw.dir,+el.dataset.n); };
 }
 function syncSheet(dir,n){
   const list=cw.slots[dir]||[]; const idx=list.findIndex(s=>s.n===n); cw.sheetIndex=idx>=0?idx:0;
@@ -111,75 +114,61 @@ function syncSheet(dir,n){
   const card=document.querySelector(`#cwCards .cw-card[data-n="${n}"]`); if(card){ card.classList.add('active'); card.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); }
 }
 
-/* ========== Smart Dock (لوح ذكي دائم) ========== */
+/* Smart Dock */
 function updateDock(dir,n){
   const s=getSlot(dir,n); if(!s) return;
-  $('#dkDir').textContent = dirLabel(dir);
-  $('#dkNum').textContent = s.n;
-  $('#dkLen').textContent = `(${s.len})`;
-  $('#dkClueText').textContent = s.text || '—';
-  const status = cw.flags.get(flagKey(dir,n)) || 'new';
-  $('#dkStatus').textContent = status==='later' ? 'لاحقًا' : 'لم يُحلّ';
+  $('#dkDir').textContent=dirLabel(dir);
+  $('#dkNum').textContent=s.n;
+  $('#dkLen').textContent=`(${s.len})`;
+  $('#dkClueText').textContent=s.text||'—';
+  const status=cw.flags.get(flagKey(dir,n))||'new';
+  $('#dkStatus').textContent=status==='later'?'لاحقًا':'لم يُحلّ';
   refreshProgressBoxes(dir,n);
 }
 function refreshProgressBoxes(dir,n){
   const s=getSlot(dir,n); if(!s) return;
-  const boxes = [];
+  const boxes=[];
   for(let i=0;i<s.len;i++){
     const r=dir==='across'?s.r: s.r+i;
     const c=dir==='across'?s.c+i: s.c;
-    const letter = cw.cells[r][c]?.querySelector('.cw-letter')?.value || '';
-    boxes.push(`<span class="dk-slot ${letter? 'filled':''}">${letter?escapeHtml(letter.toUpperCase()):' '}</span>`);
+    const letter=cw.cells[r][c]?.querySelector('.cw-letter')?.value||'';
+    boxes.push(`<span class="dk-slot ${letter?'filled':''}">${letter?escapeHtml(letter.toUpperCase()):' '}</span>`);
   }
-  $('#dkSlots').innerHTML = boxes.join('');
+  $('#dkSlots').innerHTML=boxes.join('');
 }
 
-/* ========== اختيار الخانات والكتابة ========== */
-const key = (r,c)=>`${r},${c}`;
-const getSlot = (dir,n)=>(cw.slots[dir]||[]).find(s=>s.n===n);
-function clearHighlights(){
-  document.querySelectorAll('.cw-highlight').forEach(el=>el.classList.remove('cw-highlight'));
-  document.querySelectorAll('.cw-active').forEach(el=>el.classList.remove('cw-active'));
-}
+/* اختيار/كتابة */
+const key=(r,c)=>`${r},${c}`;
+const getSlot=(dir,n)=>(cw.slots[dir]||[]).find(s=>s.n===n);
+function clearHighlights(){ document.querySelectorAll('.cw-highlight,.cw-active').forEach(el=>el.classList.remove('cw-highlight','cw-active')); }
 function selectSlot(dir,n){
   cw.dir=dir; syncSheet(dir,n); clearHighlights(); updateDock(dir,n);
   const s=getSlot(dir,n); if(!s) return;
-
   for(let i=0;i<s.len;i++){
-    const r=dir==='across'?s.r: s.r+i;
-    const c=dir==='across'?s.c+i: s.c;
-    const cell=cw.cells[r][c];
-    if(cell && !cell.classList.contains('cw-block')) cell.classList.add('cw-highlight');
+    const r=dir==='across'?s.r: s.r+i, c=dir==='across'?s.c+i: s.c;
+    const cell=cw.cells[r][c]; if(cell && !cell.classList.contains('cw-block')) cell.classList.add('cw-highlight');
   }
-  // أول خانة فارغة
   let focused=false;
   for(let i=0;i<s.len;i++){
-    const r=dir==='across'?s.r: s.r+i;
-    const c=dir==='across'?s.c+i: s.c;
+    const r=dir==='across'?s.r: s.r+i, c=dir==='across'?s.c+i: s.c;
     const inp=cw.cells[r][c]?.querySelector('.cw-letter');
     if(inp && !inp.value){ inp.focus(); focused=true; break; }
   }
   if(!focused){ const inp=cw.cells[s.r][s.c]?.querySelector('.cw-letter'); if(inp) inp.focus(); }
 }
 function clickCell(r,c){
-  const nIn=cw.coverMap[cw.dir].get(key(r,c));
-  if(nIn!=null){ selectSlot(cw.dir,nIn); return; }
+  const nIn=cw.coverMap[cw.dir].get(key(r,c)); if(nIn!=null){ selectSlot(cw.dir,nIn); return; }
   const other=cw.dir==='across'?'down':'across';
   const nOther=cw.coverMap[other].get(key(r,c));
   if(nOther!=null){ setDir(other); selectSlot(other,nOther); }
 }
-function focusCell(r,c){
-  const cell=cw.cells[r][c]; if(!cell) return;
-  document.querySelectorAll('.cw-active').forEach(el=>el.classList.remove('cw-active'));
-  cell.classList.add('cw-active');
-}
+function focusCell(r,c){ const cell=cw.cells[r][c]; if(!cell) return; document.querySelectorAll('.cw-active').forEach(el=>el.classList.remove('cw-active')); cell.classList.add('cw-active'); }
 function move(step){
   const cur=cw.sheetIndex; const slot=cw.slots[cw.dir][cur]; if(!slot) return;
   let idx=0;
   for(let i=0;i<slot.len;i++){
     const r=cw.dir==='across'?slot.r:slot.r+i, c=cw.dir==='across'?slot.c+i:slot.c;
-    const inp=cw.cells[r][c]?.querySelector('.cw-letter');
-    if(inp===document.activeElement){ idx=i; break; }
+    const inp=cw.cells[r][c]?.querySelector('.cw-letter'); if(inp===document.activeElement){ idx=i; break; }
   }
   let ni=Math.min(slot.len-1,Math.max(0,idx+step));
   const nr=cw.dir==='across'?slot.r:slot.r+ni, nc=cw.dir==='across'?slot.c+ni:slot.c;
@@ -193,14 +182,10 @@ function onKey(e){
   else if(k==='ArrowRight'||k==='ArrowDown'){ move(+1); e.preventDefault(); }
   else if(k==='Enter'){ cwCheckWord(); e.preventDefault(); }
 }
-function refreshCurrentDock(){
-  const list=cw.slots[cw.dir]; if(!list?.length) return;
-  const n=list[cw.sheetIndex]?.n; if(n==null) return;
-  refreshProgressBoxes(cw.dir,n);
-}
+function refreshCurrentDock(){ const list=cw.slots[cw.dir]; if(!list?.length) return; const n=list[cw.sheetIndex]?.n; if(n==null) return; refreshProgressBoxes(cw.dir,n); }
 
-/* ========== التحقق ========== */
-function getWordLetters(dir,n){
+/* التحقق */
+function wordLetters(dir,n){
   const s=getSlot(dir,n); if(!s) return '';
   let out=''; for(let i=0;i<s.len;i++){
     const r=dir==='across'?s.r: s.r+i, c=dir==='across'?s.c+i: s.c;
@@ -217,27 +202,24 @@ function markSlot(dir,n,cls){
 }
 export function cwCheckWord(){
   const dir=cw.dir; const n=cw.slots[dir][cw.sheetIndex]?.n; if(n==null) return;
-  const user=getWordLetters(dir,n); const ans=cw.answers[dir][String(n)]||'';
-  const ok=matchAnswer(user,ans,ans);
+  const ok=matchAnswer(wordLetters(dir,n),(cw.answers[dir][String(n)]||''),'');
   markSlot(dir,n, ok?'cw-correct':'cw-wrong');
-  notify(ok?'✔︎ كلمة صحيحة':'✖︎ غير صحيحة');
+  note(ok?'✔︎ كلمة صحيحة':'✖︎ غير صحيحة');
   if(ok){ const w=getWallet(); w.coins+=5; setWallet(w); }
 }
 export function cwCheckAll(){
   let total=0,good=0;
   ['across','down'].forEach(dir=>{
     (cw.slots[dir]||[]).forEach(s=>{
-      total++;
-      const ok=matchAnswer(getWordLetters(dir,s.n), cw.answers[dir][String(s.n)]||'', '');
-      markSlot(dir,s.n, ok?'cw-correct':'cw-wrong');
-      if(ok) good++;
+      total++; const ok=matchAnswer(wordLetters(dir,s.n), cw.answers[dir][String(s.n)]||'', '');
+      markSlot(dir,s.n, ok?'cw-correct':'cw-wrong'); if(ok) good++;
     });
   });
-  notify(`النتيجة: ${good}/${total}`);
+  note(`النتيجة: ${good}/${total}`);
   const w=getWallet(); w.coins+=Math.round((good/Math.max(1,total))*20); setWallet(w);
 }
 
-/* ========== تلميحات ووسوم ========== */
+/* علامات/خيارات */
 const flagKey=(dir,n)=>`${dir}:${n}`;
 const flagClass=(dir,n)=> (cw.flags.get(flagKey(dir,n))==='later'?'flag-later':'');
 export function cwMarkLater(){
@@ -249,13 +231,11 @@ export function cwMarkLater(){
 export function cwHintLetter(){
   const dir=cw.dir; const n=cw.slots[dir][cw.sheetIndex]?.n; if(n==null) return;
   const s=getSlot(dir,n); const ans=(cw.answers[dir][String(n)]||'').toUpperCase(); if(!s||!ans) return;
-  const w=getWallet(); if((w.coins||0)<10){ notify('لا توجد عملات كافية'); return; }
+  const w=getWallet(); if((w.coins||0)<10){ note('لا توجد عملات كافية'); return; }
   for(let i=0;i<s.len;i++){
     const r=dir==='across'?s.r: s.r+i, c=dir==='across'?s.c+i: s.c;
     const inp=cw.cells[r][c]?.querySelector('.cw-letter');
-    if(inp && !inp.value){
-      inp.value = ans[i]||''; setWallet({...w, coins:w.coins-10}); break;
-    }
+    if(inp && !inp.value){ inp.value=ans[i]||''; setWallet({...w,coins:w.coins-10}); break; }
   }
   refreshCurrentDock();
 }
@@ -265,34 +245,14 @@ export function cwFlipDir(){
   const r=+active.dataset.r, c=+active.dataset.c;
   const other=cw.dir==='across'?'down':'across';
   const nOther=cw.coverMap[other].get(key(r,c));
-  if(nOther!=null){ setDir(other); selectSlot(other,nOther); }
-  else{ setDir(other); cwNext(); }
+  if(nOther!=null){ setDir(other); selectSlot(other,nOther); } else { setDir(other); cwNext(); }
 }
-
-/* ========== بحث/فلترة ========== */
 export function cwSearch(q){
-  q=(q||'').trim();
-  const cards=$('#cwCards'); if(!cards) return;
-  const nodes=[...cards.querySelectorAll('.cw-card')];
-  let first=null;
-  nodes.forEach(n=>{
-    const text=(n.querySelector('.cw-card-text')?.textContent||'');
-    const show = !q || text.includes(q);
-    n.style.display = show ? '' : 'none';
-    if(show && !first) first=n;
-  });
-  if(first){
-    first.classList.add('active');
-    first.scrollIntoView({behavior:'smooth',block:'nearest'});
-    nodes.forEach(n=>{ if(n!==first) n.classList.remove('active'); });
-  }
-}
-export function cwFilter(mode){
-  if(mode==='all'){ /* لا شيء */ }
-  else if(mode==='across'){ setDir('across'); }
-  else if(mode==='down'){ setDir('down'); }
-  renderCards();
+  q=(q||'').trim(); const cards=$('#cwCards'); if(!cards) return;
+  const nodes=[...cards.querySelectorAll('.cw-card')]; let first=null;
+  nodes.forEach(n=>{ const t=(n.querySelector('.cw-card-text')?.textContent||''); const show=!q||t.includes(q); n.style.display=show?'':'none'; if(show&&!first) first=n; });
+  if(first){ first.classList.add('active'); first.scrollIntoView({behavior:'smooth',block:'nearest'}); nodes.forEach(n=>{ if(n!==first) n.classList.remove('active'); }); }
 }
 
-/* ========== مساعدات صغيرة ========== */
-function notify(msg){ const fb=cw?.feedback; if(fb){ fb.textContent=msg; } }
+/* Helpers */
+function note(msg){ const fb=cw?.feedback; if(fb) fb.textContent=msg; }
