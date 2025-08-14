@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <<link rel="stylesheet" href="styles.css?v=fix3">
-<script defer src="app.js?v=fix3"></script>>
+<script defer src="app.js?v=fix5"></script>>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=fix2">
+  <link rel="stylesheet" href="styles.css?v=fix4">
 </head>
 <body>
 <header>
@@ -69,6 +69,7 @@
       <h2 class="title">اختر وضع اللعب</h2>
       <div class="grid-3">
         <button class="btn-primary" onclick="startOdyssey()">🚀 مسار الأوديسي (٥ مراحل)</button>
+        <button class="btn" onclick="openCrossword()">📰 الكلمات المتقاطعة 9×9</button>
         <button class="btn" onclick="showStore()">🛍️ المتجر</button>
         <button class="btn" onclick="showScreen('userSelect')">تبديل المستخدم</button>
       </div>
@@ -117,6 +118,41 @@
     </div>
   </section>
 
+  <!-- الكلمات المتقاطعة -->
+  <section id="scrCrossword" class="screen">
+    <div class="card">
+      <div class="row space-between">
+        <h2 class="title">الكلمات المتقاطعة (نمط Newspaper)</h2>
+        <div class="row">
+          <span class="badge">📅 <b id="cwDate">—</b></span>
+          <span class="badge">📏 9×9</span>
+        </div>
+      </div>
+
+      <div id="cwBoard" class="cw-grid mt8" aria-label="لوحة الكلمات المتقاطعة"></div>
+
+      <div class="grid-2 mt8">
+        <div>
+          <h3 class="title">أفقيًا</h3>
+          <ol id="cwCluesAcross" class="cw-clues"></ol>
+        </div>
+        <div>
+          <h3 class="title">عموديًا</h3>
+          <ol id="cwCluesDown" class="cw-clues"></ol>
+        </div>
+      </div>
+
+      <div class="row center mt8">
+        <button class="btn" onclick="cwToggleDir()">تبديل الاتجاه</button>
+        <button class="btn" onclick="cwCheckWord()">تحقق (كلمة)</button>
+        <button class="btn" onclick="cwCheckAll()">تحقق (شبكة)</button>
+        <button class="btn" onclick="showScreen('games')">رجوع</button>
+      </div>
+
+      <div id="cwFeedback" class="help mt8"></div>
+    </div>
+  </section>
+
   <!-- المتجر -->
   <section id="scrStore" class="screen">
     <div class="card">
@@ -132,6 +168,6 @@
   </section>
 </main>
 
-<script src="app.js?v=fix2"></script>
+<script defer src="app.js?v=fix4"></script>
 </body>
 </html>
