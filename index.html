@@ -1,132 +1,1 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<<link rel="stylesheet" href="styles.css?v=od5">
-<script src="app.js?v=od5"></script>>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MindGrid – شبكة العقول</title>
-  <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=od2">
-</head>
-<body>
-<header>
-  <div class="logo">MG</div>
-  <h1>MindGrid – شبكة العقول</h1>
-  <div class="spacer"></div>
-  <button class="btn" title="تبديل الثيم" onclick="cycleTheme()">🎨</button>
-</header>
 
-<main>
-  <section id="userSelect" class="screen active">
-    <div class="card">
-      <div class="row space-between">
-        <h2 class="title">اختر مستخدمًا أو أضف جديدًا</h2>
-        <button class="btn-primary" onclick="showScreen('addUser')">إضافة مستخدم</button>
-      </div>
-      <div id="userList" class="grid-3"></div>
-    </div>
-  </section>
-
-  <section id="addUser" class="screen">
-    <div class="card">
-      <h2 class="title">مستخدم جديد</h2>
-      <div class="grid-2">
-        <div>
-          <label>الاسم</label>
-          <input id="name" class="input" type="text" placeholder="اكتب اسمك">
-        </div>
-        <div>
-          <label>الدولة</label>
-          <input id="countryInput" class="input" list="countryList" placeholder="اختر الدولة">
-          <datalist id="countryList"></datalist>
-        </div>
-        <div>
-          <label>تاريخ الميلاد</label>
-          <input id="dob" class="input" type="date">
-          <div class="help">سنحسب العمر تلقائيًا.</div>
-        </div>
-        <div>
-          <label>مستوى الصعوبة</label>
-          <select id="difficulty" class="select">
-            <option value="easy">سهل</option>
-            <option value="medium">متوسط</option>
-            <option value="hard" selected>صعب</option>
-          </select>
-        </div>
-      </div>
-      <div class="row end mt8">
-        <button class="btn" onclick="showScreen('userSelect')">رجوع</button>
-        <button class="btn-primary" onclick="saveUser()">حفظ وإنهاء</button>
-      </div>
-    </div>
-  </section>
-
-  <section id="games" class="screen">
-    <div class="card">
-      <h2 class="title">اختر وضع اللعب</h2>
-      <div class="grid-3">
-        <button class="btn-primary" onclick="startOdyssey()">🚀 مسار الأوديسي (٥ مراحل)</button>
-        <button class="btn" onclick="showStore()">🛍️ المتجر</button>
-        <button class="btn" onclick="showScreen('userSelect')">تبديل المستخدم</button>
-      </div>
-    </div>
-  </section>
-
-  <section id="scrOdyssey" class="screen">
-    <div class="card">
-      <div class="row space-between">
-        <div class="row">
-          <span class="badge">مرحلة: <b id="odStageProgress">1 / 5</b></span>
-          <span class="badge">⏱ <b id="odTimer">00:00</b></span>
-          <span class="badge">🪙 <b id="coins">0</b></span>
-        </div>
-        <span class="stage-tag" id="odStageName">—</span>
-      </div>
-
-      <div class="od-clue card soft mt8">
-        <div class="help">التلميح</div>
-        <div id="odClue">—</div>
-      </div>
-
-      <div class="grid-2 mt8">
-        <div>
-          <label>إجابتك</label>
-          <input id="odAnswer" class="input" type="text" placeholder="اكتب الإجابة هنا" onkeydown="odKey(event)">
-        </div>
-        <div class="od-meta">
-          <div class="help">المجال:</div>
-          <div id="odTopic">—</div>
-          <div class="help mt8">الطول المتوقع:</div>
-          <div id="odLen">—</div>
-        </div>
-      </div>
-
-      <div class="row center mt8">
-        <button class="btn" onclick="odPrev()">◀︎ السابق</button>
-        <button class="btn" onclick="odCheck()">تحقق</button>
-        <button class="btn" onclick="odNext()">التالي ▶︎</button>
-        <button class="btn-primary" onclick="odFinishStage()">إنهاء المرحلة</button>
-      </div>
-
-      <div id="odFeedback" class="mt8 help"></div>
-      <div id="odSummary" class="mt8"></div>
-    </div>
-  </section>
-
-  <section id="scrStore" class="screen">
-    <div class="card">
-      <h2 class="title">المتجر</h2>
-      <div class="row">
-        المحفظة: 🪙 <b id="wCoins">0</b> • 💎 <b id="wGems">0</b>
-        <button class="btn" onclick="addDevCoins()">(+100 عملة للتجربة)</button>
-        <button class="btn" onclick="addDevGems()">(+10 جوهرة للتجربة)</button>
-      </div>
-      <div class="help mt8">سنربطه لاحقًا بعناصر وميزات حقيقية (تذاكر/دروع/ثيمات).</div>
-      <div class="row mt8"><button class="btn" onclick="showScreen('games')">رجوع</button></div>
-    </div>
-  </section>
-</main>
-
-<script src="app.js?v=od2"></script>
-</body>
-</html>
