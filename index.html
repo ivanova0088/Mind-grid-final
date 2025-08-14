@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=fix7">
+  <link rel="stylesheet" href="styles.css?v=mod1">
 </head>
 <body>
+
 <header>
   <div class="logo">MG</div>
   <h1>MindGrid – شبكة العقول</h1>
@@ -16,7 +17,7 @@
 </header>
 
 <main>
-  <!-- اختيار/إدارة المستخدم -->
+  <!-- شاشة اختيار/إدارة المستخدم -->
   <section id="userSelect" class="screen active">
     <div class="card">
       <div class="row space-between">
@@ -27,7 +28,7 @@
     </div>
   </section>
 
-  <!-- إضافة مستخدم -->
+  <!-- شاشة إضافة مستخدم -->
   <section id="addUser" class="screen">
     <div class="card">
       <h2 class="title">مستخدم جديد</h2>
@@ -69,7 +70,7 @@
       <div class="grid-3">
         <button class="btn-primary" onclick="startOdyssey()">🚀 مسار الأوديسي (٥ مراحل)</button>
         <button class="btn" onclick="openCrossword()">📰 الكلمات المتقاطعة 9×9</button>
-        <button class="btn" onclick="showStore()">🛍️ المتجر</button>
+        <button class="btn" onclick="showScreen('scrStore')">🛍️ المتجر</button>
         <button class="btn" onclick="showScreen('userSelect')">تبديل المستخدم</button>
       </div>
     </div>
@@ -114,6 +115,9 @@
 
       <div id="odFeedback" class="mt8 help"></div>
       <div id="odSummary" class="mt8"></div>
+      <div class="row mt8">
+        <button class="btn" onclick="showScreen('games')">رجوع</button>
+      </div>
     </div>
   </section>
 
@@ -130,6 +134,10 @@
 
       <div id="cwBoard" class="cw-grid mt8" aria-label="لوحة الكلمات المتقاطعة"></div>
       <div id="cwFeedback" class="help mt8"></div>
+
+      <div class="row mt8">
+        <button class="btn" onclick="showScreen('games')">رجوع</button>
+      </div>
     </div>
 
     <!-- Bottom-Sheet + Swipe Cards -->
@@ -150,6 +158,7 @@
           <button class="btn" onclick="cwPrev()">◀︎</button>
           <button class="btn" onclick="cwCheckWord()">تحقق (كلمة)</button>
           <button class="btn" onclick="cwNext()">▶︎</button>
+          <button class="btn" onclick="cwCheckAll()">تحقق الكل</button>
         </div>
       </div>
     </div>
@@ -164,12 +173,15 @@
         <button class="btn" onclick="addDevCoins()">(+100 عملة للتجربة)</button>
         <button class="btn" onclick="addDevGems()">(+10 جوهرة للتجربة)</button>
       </div>
-      <div class="help mt8">سنربطه لاحقًا بعناصر وميزات حقيقية (تذاكر/دروع/ثيمات).</div>
-      <div class="row mt8"><button class="btn" onclick="showScreen('games')">رجوع</button></div>
+      <div class="help mt8">لاحقًا سنضيف عناصر وميزات تُشترى بالعملات/الجواهر.</div>
+      <div class="row mt8">
+        <button class="btn" onclick="showScreen('games')">رجوع</button>
+      </div>
     </div>
   </section>
 </main>
 
-<script defer src="app.js?v=fix7"></script>
+<!-- نقطة الدخول (ES Modules) -->
+<script type="module" src="app.js?v=mod1"></script>
 </body>
 </html>
