@@ -16,6 +16,7 @@ function computeAge(dob){ if(!dob) return 0; const d=new Date(dob), n=new Date()
 
 function renderUsers(){
   const box = $('#userList');
+  if(!box) return;
   box.innerHTML = users.map(u=>`
     <div class="card">
       <div class="row space-between">
@@ -37,7 +38,12 @@ function delUser(id){ users=users.filter(u=>u.id!==id); safeSet('mg_users',users
 function saveUser(){
   const name=$('#name').value.trim(), country=$('#countryInput').value.trim(), dob=$('#dob').value, diff=$('#difficulty').value;
   const u={id:uid(), name, country, dob, age:computeAge(dob), difficulty:diff, theme:null, progress:{}};
-  users.push(u); if(!safeSet('mg_users',users)) return; renderUsers(); showScreen('userSelect');
+  users.push(u);
+  if(!safeSet('mg_users',users)) return;
+  activeId = u.id;
+  localStorage.setItem('mg_active', u.id);
+  renderUsers();
+  showScreen('games'); // ينتقل مباشرة لقائمة الألعاب
 }
 
 /* ========= Themes ========= */
@@ -119,7 +125,7 @@ function todayKey(){ const d=new Date(); const yyyy=d.getFullYear(), mm=String(d
 
 function startOdyssey(){
   if(!activeId){ alert('اختر مستخدمًا أولًا'); return; }
-  if(!MG){ alert('المحتوى لم يُحمَّل بعد. أعد محاولة بعد ثوانٍ.'); return; }
+  if(!MG){ alert('المحتوى لم يُحمَّل بعد. أعد محاولة بعد ثوانٍ.'); return; }
 
   const user = users.find(u=>u.id===activeId) || {difficulty:'hard'};
   const cfg=MG.cfg; const seedStr = (cfg.seed_formula||'')+todayKey()+activeId;
@@ -161,10 +167,10 @@ function loadStage(stageId, rnd){
   });
 
   od.items = items; od.i=0; od.answers = Array(items.length).fill(''); od.correct = Array(items.length).fill(null);
-  document.querySelector('#odStageProgress').textContent = `${od.stageIndex+1} / ${od.order.length}`;
-  document.querySelector('#odStageName').textContent = STAGE_LABELS[stageId] || stageId;
+  $('#odStageProgress').textContent = `${od.stageIndex+1} / ${od.order.length}`;
+  $('#odStageName').textContent = STAGE_LABELS[stageId] || stageId;
   const accent = S.accent_color || getComputedStyle(document.documentElement).getPropertyValue('--primary');
-  document.querySelector('#odStageName').style.color = accent;
+  $('#odStageName').style.color = accent;
 
   startTimerForStage(stageId);
   renderCurrent();
@@ -172,23 +178,23 @@ function loadStage(stageId, rnd){
 
 function renderCurrent(){
   const it = od.items[od.i]; if(!it) return;
-  document.querySelector('#odClue').textContent = it._clue || '—';
-  document.querySelector('#odTopic').textContent = it.topic || '—';
-  document.querySelector('#odLen').textContent = it._len || '—';
-  const inp = document.querySelector('#odAnswer'); inp.value = od.answers[od.i] || ''; inp.focus();
-  const fb = document.querySelector('#odFeedback'); fb.className='help'; fb.textContent='';
-  document.querySelector('#odSummary').innerHTML='';
+  $('#odClue').textContent = it._clue || '—';
+  $('#odTopic').textContent = it.topic || '—';
+  $('#odLen').textContent = it._len || '—';
+  const inp = $('#odAnswer'); inp.value = od.answers[od.i] || ''; inp.focus();
+  const fb = $('#odFeedback'); fb.className='help'; fb.textContent='';
+  $('#odSummary').innerHTML='';
 }
 function odPrev(){ if(!od) return; if(od.i>0){ od.i--; renderCurrent(); } }
 function odNext(){ if(!od) return; if(od.i<od.items.length-1){ od.i++; renderCurrent(); } }
 function odKey(e){ if(e.key==='Enter'){ e.preventDefault(); odCheck(); } }
 
 function odCheck(){
-  const it = od.items[od.i]; const inp=document.querySelector('#odAnswer').value.trim();
+  const it = od.items[od.i]; const inp=$('#odAnswer').value.trim();
   od.answers[od.i]=inp;
   const ok = matchAnswer(inp, it.answer, it.display_answer);
   od.correct[od.i]=ok;
-  const fb=document.querySelector('#odFeedback'); fb.textContent = ok? '✔︎ إجابة صحيحة' : '✖︎ غير صحيحة'; fb.className = ok? 'help ok' : 'help err';
+  const fb=$('#odFeedback'); fb.textContent = ok? '✔︎ إجابة صحيحة' : '✖︎ غير صحيحة'; fb.className = ok? 'help ok' : 'help err';
   if(ok){ const w=getWallet(); w.coins+=5; setWallet(w); }
 }
 
@@ -204,13 +210,13 @@ function startTimerForStage(stageId){
   od.timer.int = setInterval(()=>{
     od.timer.sec = Math.floor((Date.now()-od.timer.t0)/1000);
     const left = Math.max(0, timeSec - od.timer.sec);
-    document.querySelector('#odTimer').textContent = fmtMMSS(left);
+    $('#odTimer').textContent = fmtMMSS(left);
     if(left<=0){ stopTimer(); autoFinishOnTime(); }
   }, 250);
 }
 function stopTimer(){ if(od&&od.timer&&od.timer.int){ clearInterval(od.timer.int); od.timer.int=null; } }
 function fmtMMSS(s){ const mm=String(Math.floor(s/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${mm}:${ss}`; }
-function autoFinishOnTime(){ document.querySelector('#odFeedback').className='help err'; document.querySelector('#odFeedback').textContent='انتهى الوقت — تقييم المرحلة…'; odFinishStage(true); }
+function autoFinishOnTime(){ $('#odFeedback').className='help err'; $('#odFeedback').textContent='انتهى الوقت — تقييم المرحلة…'; odFinishStage(true); }
 
 function odFinishStage(fromTimeout=false){
   const stageId = od.order[od.stageIndex];
@@ -234,7 +240,7 @@ function odFinishStage(fromTimeout=false){
   const coinsGain = Math.round(acc*30) + (pass?20:0);
   w.coins += coinsGain; setWallet(w);
 
-  const sum = document.querySelector('#odSummary');
+  const sum = $('#odSummary');
   sum.innerHTML = `
     <div class="card soft">
       <div><b>نتيجة المرحلة:</b> ${pass?'نجاح ✔︎':'إخفاق ✖︎'}</div>
@@ -251,22 +257,34 @@ function odFinishStage(fromTimeout=false){
       const rnd = mulberry32(djb2(seedStr));
       loadStage(od.order[od.stageIndex], rnd);
     }else{
-      document.querySelector('#odClue').textContent='أحسنت! أكملت المراحل الخمس.';
-      document.querySelector('#odTopic').textContent='—';
-      document.querySelector('#odLen').textContent='—';
-      document.querySelector('#odFeedback').textContent='';
-      document.querySelector('#odStageName').textContent='انتهت الجولة 🎉';
+      $('#odClue').textContent='أحسنت! أكملت المراحل الخمس.';
+      $('#odTopic').textContent='—';
+      $('#odLen').textContent='—';
+      $('#odFeedback').textContent='';
+      $('#odStageName').textContent='انتهت الجولة 🎉';
     }
   }else{
-    document.querySelector('#odFeedback').className='help err';
-    document.querySelector('#odFeedback').textContent = 'يمكنك تعديل إجاباتك ثم الضغط "إنهاء المرحلة" مجددًا، أو الرجوع.';
+    $('#odFeedback').className='help err';
+    $('#odFeedback').textContent = 'يمكنك تعديل إجاباتك ثم الضغط "إنهاء المرحلة" مجددًا، أو الرجوع.';
   }
 }
 
+/* ========= Store screen ========= */
 function showStore(){ showScreen('scrStore'); setWallet(getWallet()); }
 
-renderUsers();
+/* ========= Boot ========= */
+(function boot(){
+  users = safeGet('mg_users', []);
+  activeId = localStorage.getItem('mg_active') || null;
+  renderUsers();
+  if (users.length > 0) {
+    showScreen('userSelect'); // اعرض المستخدمين القدامى مع خيار الإضافة
+  } else {
+    showScreen('addUser');    // أول مرة فقط
+  }
+})();
 
+/* ========= Public API ========= */
 window.showScreen = showScreen;
 window.saveUser = saveUser;
 window.enterAs = enterAs;
