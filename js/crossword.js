@@ -1,7 +1,6 @@
 /* ========= crossword.js (Smart Dock) ========= */
 import { $, showScreen, escapeHtml, matchAnswer, getWallet, setWallet } from './core.js';
 
-/* شبكة احتياطية عند فشل ملف اليوم */
 const CW_FALLBACK = {
   date:"fallback", gridSize:9,
   grid:["..#....#.","...#.....",".#..#..#.",".........","...#...#.",".#....#..",".....#...",".#..#..#.",".#....#.."],
@@ -14,16 +13,16 @@ const CW_FALLBACK = {
 
 let cw=null;
 
-/* ========== تحميل وفتح ========== */
+/* ========== فتح اللعبة ========== */
 export async function openCrossword(){
-  try{ await loadCrossword(); }catch(e){ console.warn('CW error',e); buildCrossword(CW_FALLBACK); notify('(تجريبي) تم فتح شبكة احتياطية.'); }
+  try{ await loadCrossword(); }
+  catch(e){ console.warn('CW error',e); buildCrossword(CW_FALLBACK); notify('(تجريبي) تم فتح شبكة احتياطية.'); }
   showScreen('scrCrossword');
 }
 async function loadCrossword(){
   const resp=await fetch('content/crossword_daily.json?v='+Date.now(),{cache:'no-store'});
   if(!resp.ok) throw new Error('HTTP '+resp.status);
-  const text=await resp.text();
-  const data=JSON.parse(text);
+  const data=JSON.parse(await resp.text());
   buildCrossword(data);
 }
 
@@ -38,11 +37,19 @@ function buildCrossword(data){
   };
   if(cw.dateEl) cw.dateEl.textContent=data.date||'—';
 
-  (data.clues?.across||[]).forEach(s=>{ cw.slots.across.push(s); cw.startMap.across.set(key(s.r,s.c),s.n); for(let i=0;i<s.len;i++) cw.coverMap.across.set(key(s.r,s.c+i),s.n); });
-  (data.clues?.down||[]).forEach(s=>{ cw.slots.down.push(s);   cw.startMap.down.set(key(s.r,s.c),s.n);   for(let i=0;i>s.len;i++){} }); // fix loop below
-  // correct down cover filling:
-  (data.clues?.down||[]).forEach(s=>{ for(let i=0;i<s.len;i++) cw.coverMap.down.set(key(s.r+i,s.c),s.n); });
+  // خرائط البداية والتغطية
+  (data.clues?.across||[]).forEach(s=>{
+    cw.slots.across.push(s);
+    cw.startMap.across.set(key(s.r,s.c),s.n);
+    for(let i=0;i<s.len;i++) cw.coverMap.across.set(key(s.r,s.c+i),s.n);
+  });
+  (data.clues?.down||[]).forEach(s=>{
+    cw.slots.down.push(s);
+    cw.startMap.down.set(key(s.r,s.c),s.n);
+    for(let i=0;i<s.len;i++) cw.coverMap.down.set(key(s.r+i,s.c),s.n);
+  });
 
+  // شبكة العرض
   const G=data.grid||Array.from({length:cw.size},()=>'.'.repeat(cw.size));
   cw.boardEl.innerHTML=''; cw.cells=Array.from({length:cw.size},()=>Array(cw.size).fill(null));
   for(let r=0;r<cw.size;r++){
@@ -67,10 +74,10 @@ function buildCrossword(data){
   setDir('across');
   if(cw.slots.across.length) selectSlot('across', cw.slots.across[0].n);
   else if(cw.slots.down.length){ setDir('down'); selectSlot('down', cw.slots.down[0].n); }
-  renderCards(); // لقائمة البطاقات في الـSheet
+  renderCards();
 }
 
-/* ========== الورقة السفلية والبطاقات (تبقى) ========== */
+/* ========== بطاقة/قائمة التلميحات (Bottom Sheet) ========== */
 const dirLabel = d => d==='across'?'أفقي':'عمودي';
 export function cwToggleSheet(){ const sh=$('#cwSheet'); sh.dataset.open = (sh.dataset.open==='1'?'0':'1'); }
 export function cwPrev(){ const list=cw.slots[cw.dir]; if(!list?.length) return; const i=Math.max(0,(cw.sheetIndex||0)-1); selectSlot(cw.dir,list[i].n); }
@@ -104,7 +111,7 @@ function syncSheet(dir,n){
   const card=document.querySelector(`#cwCards .cw-card[data-n="${n}"]`); if(card){ card.classList.add('active'); card.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); }
 }
 
-/* ========== Smart Dock ========== */
+/* ========== Smart Dock (لوح ذكي دائم) ========== */
 function updateDock(dir,n){
   const s=getSlot(dir,n); if(!s) return;
   $('#dkDir').textContent = dirLabel(dir);
@@ -216,6 +223,19 @@ export function cwCheckWord(){
   notify(ok?'✔︎ كلمة صحيحة':'✖︎ غير صحيحة');
   if(ok){ const w=getWallet(); w.coins+=5; setWallet(w); }
 }
+export function cwCheckAll(){
+  let total=0,good=0;
+  ['across','down'].forEach(dir=>{
+    (cw.slots[dir]||[]).forEach(s=>{
+      total++;
+      const ok=matchAnswer(getWordLetters(dir,s.n), cw.answers[dir][String(s.n)]||'', '');
+      markSlot(dir,s.n, ok?'cw-correct':'cw-wrong');
+      if(ok) good++;
+    });
+  });
+  notify(`النتيجة: ${good}/${total}`);
+  const w=getWallet(); w.coins+=Math.round((good/Math.max(1,total))*20); setWallet(w);
+}
 
 /* ========== تلميحات ووسوم ========== */
 const flagKey=(dir,n)=>`${dir}:${n}`;
@@ -230,7 +250,6 @@ export function cwHintLetter(){
   const dir=cw.dir; const n=cw.slots[dir][cw.sheetIndex]?.n; if(n==null) return;
   const s=getSlot(dir,n); const ans=(cw.answers[dir][String(n)]||'').toUpperCase(); if(!s||!ans) return;
   const w=getWallet(); if((w.coins||0)<10){ notify('لا توجد عملات كافية'); return; }
-  // أول خانة فارغة
   for(let i=0;i<s.len;i++){
     const r=dir==='across'?s.r: s.r+i, c=dir==='across'?s.c+i: s.c;
     const inp=cw.cells[r][c]?.querySelector('.cw-letter');
@@ -241,8 +260,8 @@ export function cwHintLetter(){
   refreshCurrentDock();
 }
 export function cwFlipDir(){
-  // اعثر على الخلية النشطة وحاول اختيار الكلمة المتقاطعة في الاتجاه الآخر
-  const active=document.querySelector('.cw-active'); if(!active){ setDir(cw.dir==='across'?'down':'across'); cwNext(); return; }
+  const active=document.querySelector('.cw-active'); 
+  if(!active){ setDir(cw.dir==='across'?'down':'across'); cwNext(); return; }
   const r=+active.dataset.r, c=+active.dataset.c;
   const other=cw.dir==='across'?'down':'across';
   const nOther=cw.coverMap[other].get(key(r,c));
@@ -262,7 +281,11 @@ export function cwSearch(q){
     n.style.display = show ? '' : 'none';
     if(show && !first) first=n;
   });
-  if(first){ first.classList.add('active'); first.scrollIntoView({behavior:'smooth',block:'nearest'}); nodes.forEach(n=>{ if(n!==first) n.classList.remove('active'); }); }
+  if(first){
+    first.classList.add('active');
+    first.scrollIntoView({behavior:'smooth',block:'nearest'});
+    nodes.forEach(n=>{ if(n!==first) n.classList.remove('active'); });
+  }
 }
 export function cwFilter(mode){
   if(mode==='all'){ /* لا شيء */ }
