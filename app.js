@@ -2,16 +2,16 @@
 import {
   boot, showScreen, renderUsers, saveUser, enterAs, delUser,
   cycleTheme, addDevCoins, addDevGems
-} from './js/core.js';
+} from './js/core.js?v=modA4';
 
 import {
   startOdyssey, odPrev, odNext, odCheck, odFinishStage, odKey
-} from './js/odyssey.js';
+} from './js/odyssey.js?v=modA4';
 
 import {
   openCrossword, cwToggleSheet, cwSetDir, cwPrev, cwNext, cwCheckWord, cwCheckAll,
   cwHintLetter, cwFlipDir, cwMarkLater, cwSearch, cwFilter
-} from './js/crossword.js';
+} from './js/crossword.js?v=modA4';
 
 // اجعل الدوال متاحة لعناصر HTML (onclick/onsubmit…)
 window.showScreen   = showScreen;
