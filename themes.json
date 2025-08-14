@@ -1,0 +1,41 @@
+{
+  "default_theme_id": "newspaper_white",
+  "themes": [
+    {
+      "id": "newspaper_white",
+      "name_ar": "صحيفة كلاسيكية",
+      "name_en": "Classic Newspaper",
+      "vars": {
+        "--primary": "#0d47a1",
+        "--bg": "#f5f5f0",
+        "--fg": "#1a1a1a",
+        "--card": "#ffffff",
+        "--line": "#dddddd",
+        "--muted": "#666666",
+        "--ink": "#000000",
+        "--paper": "#ffffff",
+        "--focus": "#1565c0",
+        "--good": "#1b8a3c",
+        "--bad": "#b00020"
+      }
+    },
+    {
+      "id": "sky_cyan",
+      "name_ar": "سماوي MindGrid",
+      "name_en": "Sky Cyan",
+      "vars": {
+        "--primary": "#00bcd4",
+        "--bg": "#0b1117",
+        "--fg": "#eaf6fb",
+        "--card": "rgba(255,255,255,0.06)",
+        "--line": "rgba(255,255,255,0.12)",
+        "--muted": "rgba(255,255,255,0.75)",
+        "--ink": "#000000",
+        "--paper": "#ffffff",
+        "--focus": "#00bcd4",
+        "--good": "#17a34a",
+        "--bad": "#ef4444"
+      }
+    }
+  ]
+}
