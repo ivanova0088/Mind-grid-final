@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=modA6">
-
-  <!-- Fallback بسيط لو تأخر تحميل الموديول -->
+  <link rel="stylesheet" href="styles.css?v=modA7">
   <script>
+    // fallback بسيط لو تأخر تحميل الموديول
     window._mgShow = function(id){
       document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
       var el = document.getElementById(id); if(el) el.classList.add('active');
@@ -25,7 +24,7 @@
 </header>
 
 <main>
-  <!-- شاشة اختيار/إدارة المستخدم -->
+  <!-- اختيار/إدارة المستخدم -->
   <section id="userSelect" class="screen active">
     <div class="card">
       <div class="row space-between">
@@ -36,7 +35,7 @@
     </div>
   </section>
 
-  <!-- شاشة إضافة مستخدم -->
+  <!-- إضافة مستخدم -->
   <section id="addUser" class="screen">
     <div class="card">
       <h2 class="title">مستخدم جديد</h2>
@@ -47,8 +46,9 @@
         </div>
         <div>
           <label>الدولة</label>
-          <input id="countryInput" class="input" list="countryList" placeholder="اختر الدولة">
-          <datalist id="countryList"></datalist>
+          <select id="countrySelect" class="select">
+            <option value="">— اختر الدولة —</option>
+          </select>
         </div>
         <div>
           <label>تاريخ الميلاد</label>
@@ -84,7 +84,7 @@
     </div>
   </section>
 
-  <!-- مسار الأوديسي -->
+  <!-- الأوديسي -->
   <section id="scrOdyssey" class="screen">
     <div class="card">
       <div class="row space-between">
@@ -133,7 +133,7 @@
   <section id="scrCrossword" class="screen">
     <div class="card">
       <div class="row space-between">
-        <div class="row">
+        <div class="row" style="gap:.5rem">
           <button class="btn" onclick="(window.showScreen||window._mgShow)('games')">⬅︎ رجوع</button>
           <span class="badge">📏 9×9</span>
           <span class="badge" id="cwDateBadge">📅 <b id="cwDate">—</b></span>
@@ -141,10 +141,9 @@
         <h2 class="title">الكلمات المتقاطعة (نمط Newspaper)</h2>
       </div>
 
-      <!-- شريط القصص لاختيار أي سؤال -->
+      <!-- شريط لاختيار أي سؤال -->
       <div id="cwStrip" class="cw-strip mt8" aria-label="اختَر تلميحًا"></div>
 
-      <!-- تخطيط الشبكة + اللوح الذكي -->
       <div class="cw-layout mt8">
         <div id="cwBoard" class="cw-grid" aria-label="لوحة الكلمات المتقاطعة"></div>
 
@@ -194,7 +193,7 @@
       <div id="cwFeedback" class="help mt8"></div>
     </div>
 
-    <!-- Bottom Sheet (قائمة البطاقات) -->
+    <!-- Bottom Sheet (اختياري) -->
     <div class="cw-sheet" id="cwSheet" data-open="0">
       <div class="cw-sheet-handle" onclick="(window.cwToggleSheet||function(){})()">
         <div id="cwChipDir" class="chip">أفقي</div>
@@ -227,7 +226,7 @@
         <button class="btn" onclick="(window.addDevCoins||function(){})()">(+100 للتجربة)</button>
         <button class="btn" onclick="(window.addDevGems||function(){})()">(+10 للتجربة)</button>
       </div>
-      <div class="help mt8">لاحقًا سنضيف عناصر وميزات تُشترى بالعملات/الجواهر.</div>
+      <div class="help mt8">لاحقًا سنضيف عناصر وميزات.</div>
       <div class="row mt8">
         <button class="btn" onclick="(window.showScreen||window._mgShow)('games')">رجوع</button>
       </div>
@@ -235,15 +234,14 @@
   </section>
 </main>
 
-<!-- تحميل آمن + كسر كاش قوي -->
+<!-- تحميل آمن + كسر كاش -->
 <script type="module">
   (async () => {
-    try {
-      await import('./app.js?v=modA6');
-    } catch (err) {
+    try { await import('./app.js?v=modA7'); }
+    catch (err) {
       const box = document.createElement('div');
-      box.style.cssText = 'position:fixed;inset:auto 0 0 0;background:#fee2e2;color:#b91c1c;padding:10px;border-top:1px solid #fca5a5;font:14px/1.5 system-ui';
-      box.textContent = 'Module load error: ' + (err && (err.message || err));
+      box.style.cssText='position:fixed;inset:auto 0 0 0;background:#fee2e2;color:#b91c1c;padding:10px;border-top:1px solid #fca5a5;font:14px/1.5 system-ui';
+      box.textContent='Module load error: '+(err?.message||err);
       document.body.appendChild(box);
     }
   })();
