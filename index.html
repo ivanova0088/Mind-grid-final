@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MindGrid – شبكة العقول</title>
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="logo">MG</div>
+  <h1>MindGrid – شبكة العقول</h1>
+  <div class="spacer"></div>
+  <!-- زر تبديل الثيم (اختياري الآن) -->
+  <button class="btn" onclick="cycleTheme()" title="تبديل الثيم">🎨</button>
+</header>
+
+<main>
+  <!-- اختيار/إدارة المستخدمين -->
+  <section id="userSelect" class="screen active">
+    <div class="card">
+      <div class="row space-between">
+        <h2 class="title">اختر مستخدمًا أو أضف جديدًا</h2>
+        <button class="btn-primary" onclick="showScreen('addUser')">إضافة مستخدم</button>
+      </div>
+      <div id="userList" class="grid-3"></div>
+    </div>
+  </section>
+
+  <!-- إضافة مستخدم -->
+  <section id="addUser" class="screen">
+    <div class="card">
+      <h2 class="title">مستخدم جديد</h2>
+      <div class="grid-2">
+        <div>
+          <label>الاسم</label>
+          <input id="name" class="input" type="text" placeholder="اكتب اسمك">
+        </div>
+        <div>
+          <label>الدولة</label>
+          <input id="countryInput" class="input" list="countryList" placeholder="اختر الدولة">
+          <datalist id="countryList"></datalist>
+        </div>
+        <div>
+          <label>تاريخ الميلاد</label>
+          <input id="dob" class="input" type="date">
+          <div class="help">سنحسب العمر تلقائيًا.</div>
+        </div>
+        <div>
+          <label>مستوى الصعوبة</label>
+          <select id="difficulty" class="select">
+            <option value="سهل">سهل</option>
+            <option value="متوسط">متوسط</option>
+            <option value="صعب" selected>صعب</option>
+          </select>
+        </div>
+      </div>
+      <div class="row end mt8">
+        <button class="btn" onclick="showScreen('userSelect')">رجوع</button>
+        <button class="btn-primary" onclick="saveUser()">حفظ وإنهاء</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- قائمة الألعاب -->
+  <section id="games" class="screen">
+    <div class="card">
+      <h2 class="title">اختر اللعبة</h2>
+      <div class="grid-3">
+        <button class="btn-primary" onclick="showCrossword()">🧩 كلمات متقاطعة</button>
+        <button class="btn" disabled>قريبًا…</button>
+        <button class="btn" disabled>قريبًا…</button>
+      </div>
+      <div class="row mt8">
+        <button class="btn" onclick="showScreen('userSelect')">تبديل المستخدم</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- الكلمات المتقاطعة – Classic-Lite + Newspaper -->
+  <section id="scrCrossword" class="screen">
+    <div class="card">
+      <div class="cw-topbar">
+        <div class="mode-switch">
+          <button id="btn9" class="active" onclick="loadCrosswordMode('standard')">9×9</button>
+          <button id="btn5" onclick="loadCrosswordMode('mini')">5×5</button>
+        </div>
+        <div class="badges">
+          <span class="badge">⏱ <span id="timer">00:00</span></span>
+          <span class="badge">🪙 <span id="coins">0</span></span>
+        </div>
+      </div>
+
+      <h2 class="title" id="cwTitle">كلمات متقاطعة</h2>
+
+      <!-- شريط تلميح خفيف -->
+      <div class="clue-bar">
+        <button class="chip" onclick="prevClue()">◀︎</button>
+        <div class="clue-wrap">
+          <div class="segmented">
+            <button id="segAcross" class="active" onclick="switchClueTab('across')">أفقي</button>
+            <button id="segDown" onclick="switchClueTab('down')">عمودي</button>
+          </div>
+          <div class="clue-text">
+            <b id="clueNum">1</b> — <span id="clueContent">—</span>
+            <span id="clueLen" class="help">(0)</span>
+          </div>
+        </div>
+        <button class="chip" onclick="nextClue()">▶︎</button>
+      </div>
+
+      <!-- الشبكة -->
+      <div id="cwGrid" class="cw-grid"></div>
+
+      <!-- أدوات -->
+      <div class="row center mt8">
+        <button class="btn" onclick="toggleDir()">تبديل الاتجاه ↕︎</button>
+        <button class="btn" onclick="checkLetter()">تحقق (حرف)</button>
+        <button class="btn" onclick="checkWord()">تحقق (كلمة)</button>
+        <button class="btn-primary" onclick="checkGrid()">تحقق (شبكة)</button>
+      </div>
+      <div class="row center mt8">
+        <button id="pencilBtn" class="btn" onclick="togglePencil()">✎ وضع الرصاص</button>
+        <button class="btn" onclick="revealLetter()">كشف حرف (🪙1)</button>
+        <button class="btn" onclick="showScreen('games')">رجوع</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
