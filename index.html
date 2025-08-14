@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=modA3">
+  <link rel="stylesheet" href="styles.css?v=modA4">
 
-  <!-- Fallback: دالّة تبديل الشاشات تعمل حتى لو الموديول لم يُحمَّل -->
+  <!-- Fallback: دالّة تبديل الشاشات تعمل حتى لو لم يحمَّل الموديول بعد -->
   <script>
     window._mgShow = function(id){
       document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -30,7 +30,7 @@
     <div class="card">
       <div class="row space-between">
         <h2 class="title">اختر مستخدمًا أو أضف جديدًا</h2>
-        <!-- استخدم showScreen إن وُجدت، وإلا استخدم _mgShow الاحتياطية -->
+        <!-- إن كانت showScreen متاحة من الموديول تُستعمل؛ وإلا نستعمل _mgShow -->
         <button class="btn-primary" onclick="(window.showScreen||window._mgShow)('addUser')">إضافة مستخدم</button>
       </div>
       <div id="userList" class="grid-3"></div>
@@ -67,7 +67,7 @@
       </div>
       <div class="row end mt8">
         <button class="btn" onclick="(window.showScreen||window._mgShow)('userSelect')">رجوع</button>
-        <button class="btn-primary" onclick="(window.saveUser||function(){})(); (window.showScreen||window._mgShow)('games')">حفظ وإنهاء</button>
+        <button class="btn-primary" onclick="(window.saveUser||function(){})();">حفظ وإنهاء</button>
       </div>
     </div>
   </section>
@@ -130,7 +130,7 @@
     </div>
   </section>
 
-  <!-- الكلمات المتقاطعة + Smart Dock (التخطيط كما أرسلته سابقًا) -->
+  <!-- الكلمات المتقاطعة (مع Smart Dock) -->
   <section id="scrCrossword" class="screen">
     <div class="card">
       <div class="row space-between">
@@ -141,6 +141,7 @@
         </div>
       </div>
 
+      <!-- تخطيط الشبكة + اللوح الذكي -->
       <div class="cw-layout mt8">
         <div id="cwBoard" class="cw-grid" aria-label="لوحة الكلمات المتقاطعة"></div>
 
@@ -193,7 +194,7 @@
       </div>
     </div>
 
-    <!-- الـBottom Sheet للبطاقات يبقى كما هو (يمكنك إبقاءه أو حذفه لاحقًا) -->
+    <!-- Bottom Sheet (قائمة البطاقات) -->
     <div class="cw-sheet" id="cwSheet" data-open="0">
       <div class="cw-sheet-handle" onclick="(window.cwToggleSheet||function(){})()">
         <div id="cwChipDir" class="chip">أفقي</div>
@@ -234,7 +235,18 @@
   </section>
 </main>
 
-<!-- نقطة الدخول (ES Modules) -->
-<script type="module" src="./app.js?v=modA3"></script>
+<!-- تحميل آمن + كسر كاش قوي -->
+<script type="module">
+  (async () => {
+    try {
+      await import('./app.js?v=modA4');
+    } catch (err) {
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;inset:auto 0 0 0;background:#fee2e2;color:#b91c1c;padding:10px;border-top:1px solid #fca5a5;font:14px/1.5 system-ui';
+      box.textContent = 'Module load error: ' + (err && (err.message || err));
+      document.body.appendChild(box);
+    }
+  })();
+</script>
 </body>
 </html>
