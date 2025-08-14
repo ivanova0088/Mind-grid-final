@@ -15,8 +15,8 @@
         "--ink": "#000000",
         "--paper": "#ffffff",
         "--focus": "#1565c0",
-        "--correct": "#dff6df",
-        "--wrong": "#f9dddd"
+        "--good": "#1b8a3c",
+        "--bad": "#b00020"
       }
     },
     {
@@ -27,14 +27,14 @@
         "--primary": "#00bcd4",
         "--bg": "#0b1117",
         "--fg": "#eaf6fb",
-        "--card": "rgba(255,255,255,.06)",
-        "--line": "rgba(255,255,255,.12)",
-        "--muted": "rgba(255,255,255,.75)",
+        "--card": "rgba(255,255,255,0.06)",
+        "--line": "rgba(255,255,255,0.12)",
+        "--muted": "rgba(255,255,255,0.75)",
         "--ink": "#000000",
         "--paper": "#ffffff",
         "--focus": "#00bcd4",
-        "--correct": "#e8ffe8",
-        "--wrong": "#ffeaea"
+        "--good": "#17a34a",
+        "--bad": "#ef4444"
       }
     }
   ]
