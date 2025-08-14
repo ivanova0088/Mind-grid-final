@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=mod1">
+  <link rel="stylesheet" href="styles.css?v=modA2">
 </head>
 <body>
 
@@ -121,7 +121,7 @@
     </div>
   </section>
 
-  <!-- الكلمات المتقاطعة -->
+  <!-- الكلمات المتقاطعة (مع Smart Dock) -->
   <section id="scrCrossword" class="screen">
     <div class="card">
       <div class="row space-between">
@@ -132,21 +132,66 @@
         </div>
       </div>
 
-      <div id="cwBoard" class="cw-grid mt8" aria-label="لوحة الكلمات المتقاطعة"></div>
-      <div id="cwFeedback" class="help mt8"></div>
+      <!-- تخطيط الشبكة + اللوح الذكي -->
+      <div class="cw-layout mt8">
+        <div id="cwBoard" class="cw-grid" aria-label="لوحة الكلمات المتقاطعة"></div>
 
+        <aside class="cw-dock" id="cwDock">
+          <div class="dock-head">
+            <div class="dock-title">
+              <span id="dkDir">أفقي</span>
+              <span>•</span>
+              <span id="dkNum">—</span>
+              <span class="muted" id="dkLen">(—)</span>
+            </div>
+            <div class="dock-sub">
+              <span class="chip sm" id="dkDiff">—</span>
+              <span class="chip sm" id="dkStatus">لم يُحلّ</span>
+            </div>
+          </div>
+
+          <div class="dk-clue" id="dkClueText">—</div>
+
+          <div class="dk-progress">
+            <div id="dkSlots" class="dk-slots"></div>
+          </div>
+
+          <div class="dk-actions">
+            <button class="btn" onclick="cwPrev()">◀︎ السابق</button>
+            <button class="btn" onclick="cwCheckWord()">تحقق</button>
+            <button class="btn" onclick="cwNext()">التالي ▶︎</button>
+          </div>
+
+          <div class="dk-actions alt">
+            <button class="btn" onclick="cwHintLetter()">حرف (−10 🪙)</button>
+            <button class="btn" onclick="cwFlipDir()">قلب الاتجاه</button>
+            <button class="btn" onclick="cwMarkLater()">لاحقًا</button>
+          </div>
+
+          <div class="dk-footer">
+            <input id="dkSearch" class="input" type="search" placeholder="ابحث في التلميحات…" oninput="cwSearch(this.value)">
+            <div class="dk-filters">
+              <button class="chip" onclick="cwFilter('all')">الكل</button>
+              <button class="chip" onclick="cwFilter('across')">أفقي</button>
+              <button class="chip" onclick="cwFilter('down')">عمودي</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div id="cwFeedback" class="help mt8"></div>
       <div class="row mt8">
         <button class="btn" onclick="showScreen('games')">رجوع</button>
       </div>
     </div>
 
-    <!-- Bottom-Sheet + Swipe Cards -->
+    <!-- Bottom Sheet القديمة (قائمة البطاقات) تبقى متاحة -->
     <div class="cw-sheet" id="cwSheet" data-open="0">
       <div class="cw-sheet-handle" onclick="cwToggleSheet()">
         <div id="cwChipDir" class="chip">أفقي</div>
         <div id="cwChipNum" class="chip">1</div>
         <div id="cwChipLen" class="chip">(5)</div>
-        <div id="cwClueText" class="clue-text">—</div>
+        <div id="cwClueTextSheet" class="clue-text">—</div>
       </div>
       <div class="cw-sheet-body">
         <div class="seg">
@@ -170,8 +215,8 @@
       <h2 class="title">المتجر</h2>
       <div class="row">
         المحفظة: 🪙 <b id="wCoins">0</b> • 💎 <b id="wGems">0</b>
-        <button class="btn" onclick="addDevCoins()">(+100 عملة للتجربة)</button>
-        <button class="btn" onclick="addDevGems()">(+10 جوهرة للتجربة)</button>
+        <button class="btn" onclick="addDevCoins()">(+100 للتجربة)</button>
+        <button class="btn" onclick="addDevGems()">(+10 للتجربة)</button>
       </div>
       <div class="help mt8">لاحقًا سنضيف عناصر وميزات تُشترى بالعملات/الجواهر.</div>
       <div class="row mt8">
@@ -182,6 +227,6 @@
 </main>
 
 <!-- نقطة الدخول (ES Modules) -->
-<script type="module" src="app.js?v=mod1"></script>
+<script type="module" src="app.js?v=modA2"></script>
 </body>
 </html>
