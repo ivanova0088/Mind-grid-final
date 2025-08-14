@@ -1,23 +1,22 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=od2">
 </head>
 <body>
 <header>
   <div class="logo">MG</div>
   <h1>MindGrid – شبكة العقول</h1>
   <div class="spacer"></div>
-  <!-- زر تبديل الثيم (اختياري الآن) -->
-  <button class="btn" onclick="cycleTheme()" title="تبديل الثيم">🎨</button>
+  <button class="btn" title="تبديل الثيم" onclick="cycleTheme()">🎨</button>
 </header>
 
 <main>
-  <!-- اختيار/إدارة المستخدمين -->
+  <!-- اختيار/إدارة المستخدم -->
   <section id="userSelect" class="screen active">
     <div class="card">
       <div class="row space-between">
@@ -50,9 +49,9 @@
         <div>
           <label>مستوى الصعوبة</label>
           <select id="difficulty" class="select">
-            <option value="سهل">سهل</option>
-            <option value="متوسط">متوسط</option>
-            <option value="صعب" selected>صعب</option>
+            <option value="easy">سهل</option>
+            <option value="medium">متوسط</option>
+            <option value="hard" selected>صعب</option>
           </select>
         </div>
       </div>
@@ -66,69 +65,72 @@
   <!-- قائمة الألعاب -->
   <section id="games" class="screen">
     <div class="card">
-      <h2 class="title">اختر اللعبة</h2>
+      <h2 class="title">اختر وضع اللعب</h2>
       <div class="grid-3">
-        <button class="btn-primary" onclick="showCrossword()">🧩 كلمات متقاطعة</button>
-        <button class="btn" disabled>قريبًا…</button>
-        <button class="btn" disabled>قريبًا…</button>
-      </div>
-      <div class="row mt8">
+        <button class="btn-primary" onclick="startOdyssey()">🚀 مسار الأوديسي (٥ مراحل)</button>
+        <button class="btn" onclick="showStore()">🛍️ المتجر</button>
         <button class="btn" onclick="showScreen('userSelect')">تبديل المستخدم</button>
       </div>
     </div>
   </section>
 
-  <!-- الكلمات المتقاطعة – Classic-Lite + Newspaper -->
-  <section id="scrCrossword" class="screen">
+  <!-- مسار الأوديسي -->
+  <section id="scrOdyssey" class="screen">
     <div class="card">
-      <div class="cw-topbar">
-        <div class="mode-switch">
-          <button id="btn9" class="active" onclick="loadCrosswordMode('standard')">9×9</button>
-          <button id="btn5" onclick="loadCrosswordMode('mini')">5×5</button>
+      <div class="row space-between">
+        <div class="row">
+          <span class="badge">مرحلة: <b id="odStageProgress">1 / 5</b></span>
+          <span class="badge">⏱ <b id="odTimer">00:00</b></span>
+          <span class="badge">🪙 <b id="coins">0</b></span>
         </div>
-        <div class="badges">
-          <span class="badge">⏱ <span id="timer">00:00</span></span>
-          <span class="badge">🪙 <span id="coins">0</span></span>
+        <span class="stage-tag" id="odStageName">—</span>
+      </div>
+
+      <div class="od-clue card soft mt8">
+        <div class="help">التلميح</div>
+        <div id="odClue">—</div>
+      </div>
+
+      <div class="grid-2 mt8">
+        <div>
+          <label>إجابتك</label>
+          <input id="odAnswer" class="input" type="text" placeholder="اكتب الإجابة هنا" onkeydown="odKey(event)">
+        </div>
+        <div class="od-meta">
+          <div class="help">المجال:</div>
+          <div id="odTopic">—</div>
+          <div class="help mt8">الطول المتوقع:</div>
+          <div id="odLen">—</div>
         </div>
       </div>
 
-      <h2 class="title" id="cwTitle">كلمات متقاطعة</h2>
-
-      <!-- شريط تلميح خفيف -->
-      <div class="clue-bar">
-        <button class="chip" onclick="prevClue()">◀︎</button>
-        <div class="clue-wrap">
-          <div class="segmented">
-            <button id="segAcross" class="active" onclick="switchClueTab('across')">أفقي</button>
-            <button id="segDown" onclick="switchClueTab('down')">عمودي</button>
-          </div>
-          <div class="clue-text">
-            <b id="clueNum">1</b> — <span id="clueContent">—</span>
-            <span id="clueLen" class="help">(0)</span>
-          </div>
-        </div>
-        <button class="chip" onclick="nextClue()">▶︎</button>
-      </div>
-
-      <!-- الشبكة -->
-      <div id="cwGrid" class="cw-grid"></div>
-
-      <!-- أدوات -->
       <div class="row center mt8">
-        <button class="btn" onclick="toggleDir()">تبديل الاتجاه ↕︎</button>
-        <button class="btn" onclick="checkLetter()">تحقق (حرف)</button>
-        <button class="btn" onclick="checkWord()">تحقق (كلمة)</button>
-        <button class="btn-primary" onclick="checkGrid()">تحقق (شبكة)</button>
+        <button class="btn" onclick="odPrev()">◀︎ السابق</button>
+        <button class="btn" onclick="odCheck()">تحقق</button>
+        <button class="btn" onclick="odNext()">التالي ▶︎</button>
+        <button class="btn-primary" onclick="odFinishStage()">إنهاء المرحلة</button>
       </div>
-      <div class="row center mt8">
-        <button id="pencilBtn" class="btn" onclick="togglePencil()">✎ وضع الرصاص</button>
-        <button class="btn" onclick="revealLetter()">كشف حرف (🪙1)</button>
-        <button class="btn" onclick="showScreen('games')">رجوع</button>
+
+      <div id="odFeedback" class="mt8 help"></div>
+      <div id="odSummary" class="mt8"></div>
+    </div>
+  </section>
+
+  <!-- المتجر -->
+  <section id="scrStore" class="screen">
+    <div class="card">
+      <h2 class="title">المتجر</h2>
+      <div class="row">
+        المحفظة: 🪙 <b id="wCoins">0</b> • 💎 <b id="wGems">0</b>
+        <button class="btn" onclick="addDevCoins()">(+100 عملة للتجربة)</button>
+        <button class="btn" onclick="addDevGems()">(+10 جوهرة للتجربة)</button>
       </div>
+      <div class="help mt8">سنربطه لاحقًا بعناصر وميزات حقيقية (تذاكر/دروع/ثيمات).</div>
+      <div class="row mt8"><button class="btn" onclick="showScreen('games')">رجوع</button></div>
     </div>
   </section>
 </main>
 
-<script src="app.js"></script>
+<script src="app.js?v=od2"></script>
 </body>
 </html>
