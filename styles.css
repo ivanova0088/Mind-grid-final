@@ -1,47 +1,309 @@
-:root{
-  /* Newspaper افتراضي */
-  --primary:#0d47a1; --bg:#f5f5f0; --fg:#1a1a1a;
-  --card:#ffffff; --line:#dddddd; --muted:#666666;
-  --ink:#000; --paper:#fff; --focus:#1565c0;
-  --good:#1b8a3c; --bad:#b00020;
+/* ========= Helpers ========= */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function showScreen(id){ $$('.screen').forEach(s=>s.classList.remove('active')); $('#'+id).classList.add('active'); }
+function uid(){ return 'u_'+Math.random().toString(36).slice(2,10); }
+
+/* ========= Safe Storage ========= */
+function safeGet(k, fb){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):fb; }catch{ return fb; } }
+function safeSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch{ alert('التخزين معطّل (وضع خاص؟)'); return false; } }
+
+/* ========= Users ========= */
+let users = safeGet('mg_users', []);
+let activeId = localStorage.getItem('mg_active') || null;
+
+function computeAge(dob){ if(!dob) return 0; const d=new Date(dob), n=new Date(); let a=n.getFullYear()-d.getFullYear(); const m=n.getMonth()-d.getMonth(); if(m<0||(m===0&&n.getDate()<d.getDate())) a--; return Math.max(0,a); }
+
+function renderUsers(){
+  const box = $('#userList');
+  box.innerHTML = users.map(u=>`
+    <div class="card">
+      <div class="row space-between">
+        <div>
+          <div style="font-weight:800">${u.name||'بدون اسم'}</div>
+          <div class="help">${u.country||'—'} • ${u.age?u.age+' سنة':'—'} • ${labelDifficulty(u.difficulty||'hard')}</div>
+        </div>
+        <div class="row">
+          <button class="btn-primary" onclick="enterAs('${u.id}')">دخول</button>
+          <button class="btn" onclick="delUser('${u.id}')">حذف</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
 }
-*{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,system-ui,"Noto Sans Arabic",Arial,sans-serif;background:var(--bg);color:var(--fg)}
-header{position:sticky;top:0;z-index:5;padding:12px 16px;border-bottom:1px solid var(--line);background:#fff8;backdrop-filter:blur(8px);display:flex;gap:10px;align-items:center}
-.logo{width:36px;height:36px;border-radius:10px;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:900}
-h1{margin:0;font-size:18px}
-.spacer{flex:1}
-main{max-width:1100px;margin:auto;padding:18px}
+function labelDifficulty(d){ return d==='easy'?'سهل':d==='medium'?'متوسط':'صعب'; }
+function enterAs(id){ activeId=id; localStorage.setItem('mg_active',id); $('#odSummary').innerHTML=''; showScreen('games'); }
+function delUser(id){ users=users.filter(u=>u.id!==id); safeSet('mg_users',users); renderUsers(); }
+function saveUser(){
+  const name=$('#name').value.trim(), country=$('#countryInput').value.trim(), dob=$('#dob').value, diff=$('#difficulty').value;
+  const u={id:uid(), name, country, dob, age:computeAge(dob), difficulty:diff, theme:null, progress:{}};
+  users.push(u); if(!safeSet('mg_users',users)) return; renderUsers(); showScreen('userSelect');
+}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
-.card.soft{background:#fff; border-style:dashed}
+/* ========= Themes ========= */
+let themes=[], currentThemeId=null;
+function applyTheme(id){
+  const th = themes.find(x=>x.id===id); if(!th) return;
+  currentThemeId=id;
+  Object.entries(th.vars).forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
+  localStorage.setItem('mg_theme', id);
+}
+function cycleTheme(){
+  if(!themes.length) return; const i=themes.findIndex(t=>t.id===currentThemeId); const next=themes[(i+1)%themes.length]; applyTheme(next.id);
+}
+fetch('themes.json').then(r=>r.json()).then(t=>{
+  themes=t.themes||[]; const saved=localStorage.getItem('mg_theme')||t.default_theme_id||(themes[0]?.id); applyTheme(saved);
+}).catch(()=>{});
 
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.space-between{justify-content:space-between}
-.end{justify-content:flex-end}
-.center{justify-content:center}
-.mt8{margin-top:8px}
+/* ========= Countries (datalist) ========= */
+fetch('countries.json').then(r=>r.json()).then(list=>{
+  const dl=$('#countryList'); if(dl) dl.innerHTML=(list||[]).map(c=>`<option value="${c}">`).join('');
+}).catch(()=>{});
 
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media(max-width:800px){.grid-2,.grid-3{grid-template-columns:1fr}}
+/* ========= Wallet ========= */
+function getWallet(){ return safeGet('mg_wallet',{coins:200,gems:5}); }
+function setWallet(w){ safeSet('mg_wallet',w); if($('#coins')) $('#coins').textContent=w.coins; if($('#wCoins')) $('#wCoins').textContent=w.coins; if($('#wGems')) $('#wGems').textContent=w.gems; }
+function addDevCoins(){ const w=getWallet(); w.coins+=100; setWallet(w); }
+function addDevGems(){ const w=getWallet(); w.gems+=10; setWallet(w); }
+setWallet(getWallet());
 
-button,.btn,select,input{border-radius:12px;border:1px solid var(--line);background:#0001;color:var(--fg);padding:10px 14px}
-button,.btn{cursor:pointer}
-.btn-primary{background:var(--primary);color:#fff;border:none;font-weight:800}
+/* ========= Content Loader (content/*.json) ========= */
+const MG_CONTENT_FILES=[
+  'content/odyssey_config.json',
+  'content/synonyms_ar.json',
+  'content/hexa_bloom.json',
+  'content/cipher_weave.json',
+  'content/path_maze.json',
+  'content/spiral_rings.json',
+  'content/word_islands.json'
+];
+let MG=null;
+async function loadOdysseyContent(){
+  const [cfg,syn,a,e,c,b,d]=await Promise.all(MG_CONTENT_FILES.map(p=>fetch(p).then(r=>r.json())));
+  MG = { cfg, syn, stages:{A:a, E:e, C:c, B:b, D:d} };
+  const h=$('header h1'); if(h && !h.textContent.includes('•')) h.textContent+=' • المحتوى جاهز';
+}
+loadOdysseyContent().catch(()=>alert('تعذّر تحميل محتوى content/ — تأكد من المسارات وGitHub Pages'));
 
-.title{margin:0 0 10px 0;font-size:18px}
-.help{font-size:12px;color:var(--muted)}
-.badge{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#00000008}
+/* ========= Normalize / Synonyms ========= */
+function norm(s){
+  const map = (MG&&MG.syn&&MG.syn.normalize) || {"أ":"ا","إ":"ا","آ":"ا","ة":"ه","ى":"ي","ؤ":"و","ئ":"ي","ـ":""," ":"","ٱ":"ا"};
+  return (s||'').replace(/./g,ch=>map[ch]??ch).toUpperCase();
+}
+function matchAnswer(userInput, answer, displayAnswer){
+  const targetKey = displayAnswer || answer;
+  const nuser = norm(userInput);
+  const ntarget = norm(answer);
+  if(nuser===ntarget) return true;
+  const syn = (MG&&MG.syn&&MG.syn.synonyms&&MG.syn.synonyms[targetKey]) || [];
+  return syn.some(x=>norm(x)===nuser);
+}
 
-.screen{display:none}
-.active{display:block}
+/* ========= Seeded random / rotation ========= */
+function djb2(str){ let h=5381; for(let i=0;i<str.length;i++) h=((h<<5)+h)+str.charCodeAt(i); return h>>>0; }
+function mulberry32(a){ return function(){ let t=a+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; } }
+function seededShuffle(arr, rnd){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
-.input,.select{width:100%}
+/* ========= Odyssey Game State ========= */
+let od = null;  // {order, stageIndex, items, i, answers[], correct[], timer...}
 
-.stage-tag{font-weight:800;color:var(--primary)}
-.od-clue{font-size:16px;line-height:1.7}
-.od-meta{border:1px dashed var(--line);border-radius:12px;padding:10px}
+const STAGE_LABELS = {
+  A_HEXABLOOM:'HexaBloom (سداسي)',
+  E_CIPHER:'Cipher Weave (شِفري)',
+  C_PATHMAZE:'PathMaze (متاهة)',
+  B_SPIRAL:'Spiral Rings (حلقات)',
+  D_ISLANDS:'Word Islands (جزر)'
+};
 
-#odFeedback.ok{color:var(--good)}
-#odFeedback.err{color:var(--bad)}
+function todayKey(){ const d=new Date(); const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${yyyy}-${mm}-${dd}`; }
+
+function startOdyssey(){
+  if(!activeId){ alert('اختر مستخدمًا أولًا'); return; }
+  if(!MG){ alert('المحتوى لم يُحمَّل بعد. أعد محاولة بعد ثوانٍ.'); return; }
+
+  const user = users.find(u=>u.id===activeId) || {difficulty:'hard'};
+  const cfg=MG.cfg; const seedStr = (cfg.seed_formula||'')+todayKey()+activeId;
+  const rnd = mulberry32(djb2(seedStr));
+
+  // ترتيب المراحل
+  let order = [...cfg.rotation_order];
+  if(cfg.daily_auto_rotate) order = seededShuffle(order, rnd);
+
+  od = {
+    user, cfg, order,
+    stageIndex: 0,
+    items: [],    // عناصر المرحلة الحالية
+    i: 0,         // سؤال حالي
+    answers: [],  // إدخالات اللاعب
+    correct: [],  // صح/خطأ لكل عنصر
+    timer: {t0:null, int:null, sec:0}
+  };
+
+  loadStage(od.order[0], rnd);
+  showScreen('scrOdyssey');
+}
+
+/* ===== Build a stage set ===== */
+function pickByDifficulty(pool, diff){
+  // نحاول أخذ بنود diff، وإن قلّت نكمل من الأقرب
+  const hard = pool.filter(x=>x.difficulty==='hard');
+  const mid  = pool.filter(x=>x.difficulty==='medium');
+  const easy = pool.filter(x=>x.difficulty==='easy');
+  if(diff==='hard') return [...hard, ...mid, ...easy];
+  if(diff==='medium') return [...mid, ...hard, ...easy];
+  return [...easy, ...mid, ...hard];
+}
+function chooseN(list, n, rnd){ const L=[...list]; const res=[]; while(res.length<Math.min(n,L.length)){ const j=Math.floor(rnd()*L.length); res.push(L.splice(j,1)[0]); } return res; }
+
+function loadStage(stageId, rnd){
+  const S = MG.stages[idToLetter(stageId)];
+  const diff = (od.user?.difficulty)||'hard';
+  const ordered = pickByDifficulty(S.pool, diff);
+  const items = chooseN(ordered, 6, rnd).map(x=>{
+    // اختر صيغة تلميح عشوائية ثابتة
+    const clues = x.clues||['—']; const ci = Math.floor(rnd()*clues.length);
+    const expectedLen = x.length || norm(x.display_answer||x.answer).length;
+    return {...x, _clue: clues[ci], _len: expectedLen};
+  });
+
+  od.items = items; od.i=0; od.answers = Array(items.length).fill(''); od.correct = Array(items.length).fill(null);
+  // UI
+  $('#odStageProgress').textContent = `${od.stageIndex+1} / ${od.order.length}`;
+  $('#odStageName').textContent = STAGE_LABELS[stageId] || stageId;
+  const accent = S.accent_color || getComputedStyle(document.documentElement).getPropertyValue('--primary');
+  $('#odStageName').style.color = accent;
+
+  // تهيئة المؤقّت وحدود المرحلة
+  startTimerForStage(stageId);
+  renderCurrent();
+}
+
+/* ===== Stage helpers ===== */
+function idToLetter(stageId){ return stageId.split('_')[0]; } // A/E/C/B/D
+function renderCurrent(){
+  const it = od.items[od.i]; if(!it) return;
+  $('#odClue').textContent = it._clue || '—';
+  $('#odTopic').textContent = it.topic || '—';
+  $('#odLen').textContent = it._len || '—';
+  const inp = $('#odAnswer'); inp.value = od.answers[od.i] || ''; inp.focus();
+  // ملاحظات خاصة ببعض النماذج (فقط نص)
+  const fb = $('#odFeedback'); fb.className='help'; fb.textContent='';
+  $('#odSummary').innerHTML='';
+}
+function odPrev(){ if(!od) return; if(od.i>0){ od.i--; renderCurrent(); } }
+function odNext(){ if(!od) return; if(od.i<od.items.length-1){ od.i++; renderCurrent(); } }
+function odKey(e){ if(e.key==='Enter'){ e.preventDefault(); odCheck(); } }
+
+function odCheck(){
+  const it = od.items[od.i]; const inp=$('#odAnswer').value.trim();
+  od.answers[od.i]=inp;
+  const ok = matchAnswer(inp, it.answer, it.display_answer);
+  od.correct[od.i]=ok;
+  const fb=$('#odFeedback'); fb.textContent = ok? '✔︎ إجابة صحيحة' : '✖︎ غير صحيحة'; fb.className = ok? 'help ok' : 'help err';
+  if(ok){ const w=getWallet(); w.coins+=5; setWallet(w); }
+}
+
+/* ===== Timer per stage based on config ===== */
+function startTimerForStage(stageId){
+  stopTimer();
+  const cfg=od.cfg, diff = (od.user?.difficulty)||'hard';
+  const base = cfg.difficulty[diff] || cfg.difficulty.hard;
+  const over = (cfg.stage_overrides && cfg.stage_overrides[stageId] && cfg.stage_overrides[stageId][diff]) || {};
+  const timeSec = over.time_sec || base.time_sec;
+  od.timer.allowed = timeSec;
+  od.timer.sec = 0;
+  od.timer.t0 = Date.now();
+  od.timer.int = setInterval(()=>{
+    od.timer.sec = Math.floor((Date.now()-od.timer.t0)/1000);
+    const left = Math.max(0, timeSec - od.timer.sec);
+    $('#odTimer').textContent = fmtMMSS(left);
+    if(left<=0){ stopTimer(); autoFinishOnTime(); }
+  }, 250);
+}
+function stopTimer(){ if(od&&od.timer&&od.timer.int){ clearInterval(od.timer.int); od.timer.int=null; } }
+function fmtMMSS(s){ const mm=String(Math.floor(s/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${mm}:${ss}`; }
+function autoFinishOnTime(){ $('#odFeedback').className='help err'; $('#odFeedback').textContent='انتهى الوقت — تقييم المرحلة…'; odFinishStage(true); }
+
+/* ===== Finish stage & evaluate ===== */
+function odFinishStage(fromTimeout=false){
+  const stageId = od.order[od.stageIndex];
+  const cfg=od.cfg, diff=(od.user?.difficulty)||'hard';
+  const base = cfg.difficulty[diff] || cfg.difficulty.hard;
+  const over = (cfg.stage_overrides && cfg.stage_overrides[stageId] && cfg.stage_overrides[stageId][diff]) || {};
+  const minAcc = (over.min_accuracy_pct || base.min_accuracy_pct) / 100;
+
+  // دقة = عدد صحيحة / عدد مجابة (أو كامل العناصر إن لم يجب)
+  const total = od.items.length;
+  const answered = od.answers.filter(x=>x && x.trim()!=='').length;
+  const correct = od.correct.filter(x=>x===true).length;
+  const denom = total; // أشد: احسب على كامل العناصر
+  const acc = (correct/denom);
+
+  // شرط إضافي لنموذج E (شِفري) لو موجود
+  let cipherOK = true;
+  if(stageId==='E_CIPHER' && over.min_cipher_progress_pct){
+    // تقريب: التقدّم = نسبة الصحيحة (لأن فك المفاتيح يعتمد الصحة)
+    cipherOK = (acc >= (over.min_cipher_progress_pct/100));
+  }
+
+  const pass = (acc >= minAcc) && cipherOK;
+
+  // نقاط ومكافآت بسيطة
+  const w=getWallet();
+  const coinsGain = Math.round(acc*30) + (pass?20:0);
+  w.coins += coinsGain; setWallet(w);
+
+  // ملخص
+  const sum = $('#odSummary');
+  sum.innerHTML = `
+    <div class="card soft">
+      <div><b>نتيجة المرحلة:</b> ${pass?'نجاح ✔︎':'إخفاق ✖︎'}</div>
+      <div>الدقة: ${(acc*100).toFixed(0)}% — صحيحة: ${correct}/${total}</div>
+      <div>المكافأة: 🪙 +${coinsGain}</div>
+    </div>
+  `;
+  stopTimer();
+
+  if(pass){
+    // انتقل للمرحلة التالية أو انهِ الأوديسي
+    if(od.stageIndex < od.order.length-1){
+      od.stageIndex++;
+      const seedStr = (od.cfg.seed_formula||'')+todayKey()+activeId+od.stageIndex;
+      const rnd = mulberry32(djb2(seedStr));
+      loadStage(od.order[od.stageIndex], rnd);
+    }else{
+      // نهاية الجولة الكاملة
+      $('#odClue').textContent='أحسنت! أكملت المراحل الخمس.';
+      $('#odTopic').textContent='—';
+      $('#odLen').textContent='—';
+      $('#odFeedback').textContent='';
+      $('#odStageName').textContent='انتهت الجولة 🎉';
+    }
+  }else{
+    // محاولة جديدة؟ نترك المستخدم يعيد المحاولة يدويًا
+    $('#odFeedback').className='help err';
+    $('#odFeedback').textContent = 'يمكنك تعديل إجاباتك ثم الضغط "إنهاء المرحلة" مجددًا، أو الرجوع.';
+  }
+}
+
+/* ========= Store screen ========= */
+function showStore(){ showScreen('scrStore'); setWallet(getWallet()); }
+
+/* ========= Boot ========= */
+renderUsers();
+
+/* ========= Public API for HTML buttons ========= */
+window.showScreen = showScreen;
+window.saveUser = saveUser;
+window.enterAs = enterAs;
+window.delUser = delUser;
+window.cycleTheme = cycleTheme;
+window.startOdyssey = startOdyssey;
+window.odPrev = odPrev;
+window.odNext = odNext;
+window.odCheck = odCheck;
+window.odFinishStage = odFinishStage;
+window.odKey = odKey;
+window.showStore = showStore;
+window.addDevCoins = addDevCoins;
+window.addDevGems = addDevGems;
