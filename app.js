@@ -245,6 +245,40 @@ function odFinishStage(fromTimeout=false){
 }
 
 /* ========= Crossword (Newspaper 9×9) ========= */
+
+/* Fallback شبكة احتياطية إذا فشل تحميل ملف اليوم */
+const CW_FALLBACK = {
+  date: "fallback",
+  gridSize: 9,
+  grid: [
+    "..#....#.",
+    "...#.....",
+    ".#..#..#.",
+    ".........",
+    "...#...#.",
+    ".#....#..",
+    ".....#...",
+    ".#..#..#.",
+    ".#....#.."
+  ],
+  clues: {
+    across: [
+      { n:1, r:0, c:0, len:2, text:"حرفا عطف" },
+      { n:2, r:0, c:3, len:4, text:"مدينة مغربية زرقاء" },
+      { n:3, r:1, c:0, len:3, text:"غاز نبيل (54)" },
+      { n:4, r:1, c:4, len:5, text:"بلد عاصمته هلسنكي" }
+    ],
+    down: [
+      { n:1, r:0, c:0, len:3, text:"عالم نحو بصري" },
+      { n:2, r:0, c:1, len:4, text:"وحدة شدة التيار" }
+    ]
+  },
+  answers: {
+    across: { "1":"او", "2":"شفشاون", "3":"زينون", "4":"فنلندا" },
+    down:   { "1":"المبرد", "2":"أمبير" }
+  }
+};
+
 let cw = null;
 
 async function openCrossword(){
@@ -253,14 +287,22 @@ async function openCrossword(){
     await loadCrossword();
     showScreen('scrCrossword');
   }catch(e){
-    console.error(e);
-    alert('تعذّر تحميل الكلمات المتقاطعة اليومية.');
+    console.warn('CW fetch failed:', e);
+    buildCrossword(CW_FALLBACK);
+    showScreen('scrCrossword');
+    const fb = $('#cwFeedback');
+    if(fb) fb.textContent = '(وضع تجريبي) تم تحميل شبكة احتياطية لأن ملف اليوم غير متاح.';
   }
 }
 
 async function loadCrossword(){
-  const r = await fetch('content/crossword_daily.json?v=' + Date.now());
-  const data = await r.json();
+  const url = 'content/crossword_daily.json?v=' + Date.now();
+  const resp = await fetch(url, { cache:'no-store' });
+  if(!resp.ok) throw new Error('HTTP '+resp.status);
+  const text = await resp.text();
+  let data;
+  try{ data = JSON.parse(text); }
+  catch(e){ throw new Error('JSON parse error'); }
   buildCrossword(data);
 }
 
@@ -284,7 +326,6 @@ function buildCrossword(data){
 
   if(cw.dateEl) cw.dateEl.textContent = data.date || '—';
 
-  // تجهيز خرائط البداية/التغطية من clues
   (data.clues?.across||[]).forEach(s=>{
     cw.slots.across.push(s);
     cw.startMap.across.set(`${s.r},${s.c}`, s.n);
@@ -302,7 +343,6 @@ function buildCrossword(data){
     }
   });
 
-  // رسم اللوح
   const G = data.grid || Array.from({length:cw.size},()=>'.'.repeat(cw.size));
   cw.boardEl.innerHTML = '';
   cw.cells = Array.from({length:cw.size}, ()=>Array(cw.size).fill(null));
@@ -342,7 +382,6 @@ function buildCrossword(data){
     }
   }
 
-  // قائمة التلميحات
   if(cw.cluesAcrossEl){
     cw.cluesAcrossEl.innerHTML = cw.slots.across.map(s=>`<li data-dir="across" data-n="${s.n}"><b>${s.n}.</b> ${escapeHtml(s.text||'')} <span class="help">(${s.len})</span></li>`).join('');
     cw.cluesAcrossEl.addEventListener('click', e=>{
@@ -358,7 +397,6 @@ function buildCrossword(data){
     });
   }
 
-  // اختيار أول خانة متاحة
   if(cw.slots.across.length){
     cwSelectSlot('across', cw.slots.across[0].n);
   }else if(cw.slots.down.length){
@@ -382,7 +420,6 @@ function cwSelectSlot(dir,n){
   const slot = cwGetSlot(dir,n);
   if(!slot) return;
 
-  // تمييز الخلايا
   for(let i=0;i<slot.len;i++){
     const r = dir==='across' ? slot.r : slot.r + i;
     const c = dir==='across' ? slot.c + i : slot.c;
@@ -392,14 +429,12 @@ function cwSelectSlot(dir,n){
     }
   }
 
-  // تمييز التلميح
   const ul = dir==='across' ? cw.cluesAcrossEl : cw.cluesDownEl;
   if(ul){
     const li = ul.querySelector(`li[data-n="${n}"]`);
     if(li) li.classList.add('active');
   }
 
-  // التركيز على أول خانة فارغة ضمن الكلمة
   let focused=false;
   for(let i=0;i<slot.len;i++){
     const r = dir==='across' ? slot.r : slot.r + i;
@@ -420,7 +455,6 @@ function cwClickCell(r,c){
   if(nInDir!=null){
     cwSelectSlot(cw.dir, nInDir);
   }else{
-    // جرّب الاتجاه الآخر
     const other = (cw.dir==='across')?'down':'across';
     const nOther = cw.coverMap[other].get(key);
     if(nOther!=null){
@@ -430,7 +464,6 @@ function cwClickCell(r,c){
 }
 
 function cwFocusCell(r,c){
-  // إبراز الخلية الحالية
   const cell = cw.cells[r][c];
   if(!cell) return;
   $$('.cw-active').forEach(el=>el.classList.remove('cw-active'));
@@ -438,11 +471,9 @@ function cwFocusCell(r,c){
 }
 
 function cwMove(step){
-  // move داخل الكلمة الحالية
   const cur = cw.current; if(!cur) return;
   const slot = cwGetSlot(cur.dir, cur.n); if(!slot) return;
   const len = slot.len;
-  // موضع التركيز الحالي:
   let idx = 0;
   for(let i=0;i<len;i++){
     const r = cur.dir==='across'? slot.r : slot.r+i;
@@ -459,7 +490,6 @@ function cwMove(step){
 
 function cwOnInput(e, r, c){
   const v = e.target.value;
-  // أبقِ حرفًا واحدًا — عربي/إنجليزي، عالي الحالة
   e.target.value = (v||'').slice(-1).toUpperCase();
   cwMove(+1);
 }
@@ -480,14 +510,12 @@ function cwOnKey(e, r, c){
 function cwToggleDir(){
   if(!cw||!cw.current) return;
   const other = cw.dir==='across'?'down':'across';
-  // ابحث عن كلمة تغطي الخلية النشطة
   const act = document.activeElement?.closest('.cw-cell');
   if(act){
     const r=+act.dataset.r, c=+act.dataset.c;
     const n = cw.coverMap[other].get(cwKey(r,c));
     if(n!=null){ cwSelectSlot(other,n); return; }
   }
-  // fallback: أول كلمة في الاتجاه الآخر
   const first = cw.slots[other][0];
   if(first) cwSelectSlot(other, first.n);
 }
@@ -521,7 +549,6 @@ function cwCheckWord(){
   const {dir,n} = cw.current;
   const user = cwGetWordLetters(dir,n);
   const ansDisp = cw.answers[dir][String(n)] || '';
-  // للتدقيق نستخدم normalize + مرادفات إن لزم
   const ok = matchAnswer(user, ansDisp, ansDisp);
   cwMarkSlot(dir,n, ok? 'cw-correct':'cw-wrong');
   if(cw.feedback) cw.feedback.textContent = ok? '✔︎ كلمة صحيحة' : '✖︎ غير صحيحة';
