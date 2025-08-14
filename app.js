@@ -3,6 +3,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 function showScreen(id){ $$('.screen').forEach(s=>s.classList.remove('active')); $('#'+id).classList.add('active'); }
 function uid(){ return 'u_'+Math.random().toString(36).slice(2,10); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
 
 /* ========= Safe Storage ========= */
 function safeGet(k, fb){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):fb; }catch{ return fb; } }
@@ -33,7 +34,7 @@ function renderUsers(){
   `).join('');
 }
 function labelDifficulty(d){ return d==='easy'?'سهل':d==='medium'?'متوسط':'صعب'; }
-function enterAs(id){ activeId=id; localStorage.setItem('mg_active',id); $('#odSummary').innerHTML=''; showScreen('games'); }
+function enterAs(id){ activeId=id; localStorage.setItem('mg_active',id); const s=$('#odSummary'); if(s) s.innerHTML=''; showScreen('games'); }
 function delUser(id){ users=users.filter(u=>u.id!==id); safeSet('mg_users',users); renderUsers(); }
 function saveUser(){
   const name=$('#name').value.trim(), country=$('#countryInput').value.trim(), dob=$('#dob').value, diff=$('#difficulty').value;
@@ -43,7 +44,7 @@ function saveUser(){
   activeId = u.id;
   localStorage.setItem('mg_active', u.id);
   renderUsers();
-  showScreen('games'); // ينتقل مباشرة لقائمة الألعاب
+  showScreen('games'); // مباشرة لقائمة الألعاب
 }
 
 /* ========= Themes ========= */
@@ -73,7 +74,21 @@ function addDevCoins(){ const w=getWallet(); w.coins+=100; setWallet(w); }
 function addDevGems(){ const w=getWallet(); w.gems+=10; setWallet(w); }
 setWallet(getWallet());
 
-/* ========= Content Loader (content/*.json) ========= */
+/* ========= Normalize / Synonyms ========= */
+function norm(s){
+  const map = (window.MG&&MG.syn&&MG.syn.normalize) || {"أ":"ا","إ":"ا","آ":"ا","ة":"ه","ى":"ي","ؤ":"و","ئ":"ي","ـ":""," ":"","ٱ":"ا"};
+  return (s||'').replace(/./g,ch=>map[ch]??ch).toUpperCase();
+}
+function matchAnswer(userInput, answer, displayAnswer){
+  const targetKey = displayAnswer || answer;
+  const nuser = norm(userInput);
+  const ntarget = norm(answer);
+  if(nuser===ntarget) return true;
+  const syn = (window.MG&&MG.syn&&MG.syn.synonyms&&MG.syn.synonyms[targetKey]) || [];
+  return syn.some(x=>norm(x)===nuser);
+}
+
+/* ========= Odyssey content ========= */
 const MG_CONTENT_FILES=[
   'content/odyssey_config.json',
   'content/synonyms_ar.json',
@@ -91,28 +106,13 @@ async function loadOdysseyContent(){
 }
 loadOdysseyContent().catch(()=>alert('تعذّر تحميل محتوى content/ — تأكد من المسارات وGitHub Pages'));
 
-/* ========= Normalize / Synonyms ========= */
-function norm(s){
-  const map = (MG&&MG.syn&&MG.syn.normalize) || {"أ":"ا","إ":"ا","آ":"ا","ة":"ه","ى":"ي","ؤ":"و","ئ":"ي","ـ":""," ":"","ٱ":"ا"};
-  return (s||'').replace(/./g,ch=>map[ch]??ch).toUpperCase();
-}
-function matchAnswer(userInput, answer, displayAnswer){
-  const targetKey = displayAnswer || answer;
-  const nuser = norm(userInput);
-  const ntarget = norm(answer);
-  if(nuser===ntarget) return true;
-  const syn = (MG&&MG.syn&&MG.syn.synonyms&&MG.syn.synonyms[targetKey]) || [];
-  return syn.some(x=>norm(x)===nuser);
-}
-
 /* ========= Seeded random / rotation ========= */
 function djb2(str){ let h=5381; for(let i=0;i<str.length;i++) h=((h<<5)+h)+str.charCodeAt(i); return h>>>0; }
 function mulberry32(a){ return function(){ let t=a+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; } }
 function seededShuffle(arr, rnd){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
-/* ========= Odyssey Game State ========= */
+/* ========= Odyssey Game ========= */
 let od = null;
-
 const STAGE_LABELS = {
   A_HEXABLOOM:'HexaBloom (سداسي)',
   E_CIPHER:'Cipher Weave (شِفري)',
@@ -120,31 +120,19 @@ const STAGE_LABELS = {
   B_SPIRAL:'Spiral Rings (حلقات)',
   D_ISLANDS:'Word Islands (جزر)'
 };
-
 function todayKey(){ const d=new Date(); const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${yyyy}-${mm}-${dd}`; }
-
 function startOdyssey(){
   if(!activeId){ alert('اختر مستخدمًا أولًا'); return; }
   if(!MG){ alert('المحتوى لم يُحمَّل بعد. أعد محاولة بعد ثوانٍ.'); return; }
-
   const user = users.find(u=>u.id===activeId) || {difficulty:'hard'};
   const cfg=MG.cfg; const seedStr = (cfg.seed_formula||'')+todayKey()+activeId;
   const rnd = mulberry32(djb2(seedStr));
-
   let order = [...cfg.rotation_order];
   if(cfg.daily_auto_rotate) order = seededShuffle(order, rnd);
-
-  od = {
-    user, cfg, order,
-    stageIndex: 0,
-    items: [], i: 0, answers: [], correct: [],
-    timer: {t0:null, int:null, sec:0}
-  };
-
+  od = { user, cfg, order, stageIndex:0, items:[], i:0, answers:[], correct:[], timer:{t0:null,int:null,sec:0} };
   loadStage(od.order[0], rnd);
   showScreen('scrOdyssey');
 }
-
 function pickByDifficulty(pool, diff){
   const hard = pool.filter(x=>x.difficulty==='hard');
   const mid  = pool.filter(x=>x.difficulty==='medium');
@@ -155,7 +143,6 @@ function pickByDifficulty(pool, diff){
 }
 function chooseN(list, n, rnd){ const L=[...list]; const res=[]; while(res.length<Math.min(n,L.length)){ const j=Math.floor(rnd()*L.length); res.push(L.splice(j,1)[0]); } return res; }
 function idToLetter(stageId){ return stageId.split('_')[0]; }
-
 function loadStage(stageId, rnd){
   const S = MG.stages[idToLetter(stageId)];
   const diff = (od.user?.difficulty)||'hard';
@@ -165,39 +152,35 @@ function loadStage(stageId, rnd){
     const expectedLen = x.length || norm(x.display_answer||x.answer).length;
     return {...x, _clue: clues[ci], _len: expectedLen};
   });
-
   od.items = items; od.i=0; od.answers = Array(items.length).fill(''); od.correct = Array(items.length).fill(null);
   $('#odStageProgress').textContent = `${od.stageIndex+1} / ${od.order.length}`;
   $('#odStageName').textContent = STAGE_LABELS[stageId] || stageId;
   const accent = S.accent_color || getComputedStyle(document.documentElement).getPropertyValue('--primary');
   $('#odStageName').style.color = accent;
-
   startTimerForStage(stageId);
   renderCurrent();
 }
-
 function renderCurrent(){
   const it = od.items[od.i]; if(!it) return;
   $('#odClue').textContent = it._clue || '—';
   $('#odTopic').textContent = it.topic || '—';
   $('#odLen').textContent = it._len || '—';
-  const inp = $('#odAnswer'); inp.value = od.answers[od.i] || ''; inp.focus();
-  const fb = $('#odFeedback'); fb.className='help'; fb.textContent='';
-  $('#odSummary').innerHTML='';
+  const inp = $('#odAnswer'); if(inp){ inp.value = od.answers[od.i] || ''; inp.focus(); }
+  const fb = $('#odFeedback'); if(fb){ fb.className='help'; fb.textContent=''; }
+  const sm = $('#odSummary'); if(sm) sm.innerHTML='';
 }
 function odPrev(){ if(!od) return; if(od.i>0){ od.i--; renderCurrent(); } }
 function odNext(){ if(!od) return; if(od.i<od.items.length-1){ od.i++; renderCurrent(); } }
 function odKey(e){ if(e.key==='Enter'){ e.preventDefault(); odCheck(); } }
-
 function odCheck(){
   const it = od.items[od.i]; const inp=$('#odAnswer').value.trim();
   od.answers[od.i]=inp;
   const ok = matchAnswer(inp, it.answer, it.display_answer);
   od.correct[od.i]=ok;
-  const fb=$('#odFeedback'); fb.textContent = ok? '✔︎ إجابة صحيحة' : '✖︎ غير صحيحة'; fb.className = ok? 'help ok' : 'help err';
+  const fb=$('#odFeedback'); if(!fb) return;
+  fb.textContent = ok? '✔︎ إجابة صحيحة' : '✖︎ غير صحيحة'; fb.className = ok? 'help ok' : 'help err';
   if(ok){ const w=getWallet(); w.coins+=5; setWallet(w); }
 }
-
 function startTimerForStage(stageId){
   stopTimer();
   const cfg=od.cfg, diff = (od.user?.difficulty)||'hard';
@@ -216,32 +199,26 @@ function startTimerForStage(stageId){
 }
 function stopTimer(){ if(od&&od.timer&&od.timer.int){ clearInterval(od.timer.int); od.timer.int=null; } }
 function fmtMMSS(s){ const mm=String(Math.floor(s/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${mm}:${ss}`; }
-function autoFinishOnTime(){ $('#odFeedback').className='help err'; $('#odFeedback').textContent='انتهى الوقت — تقييم المرحلة…'; odFinishStage(true); }
-
+function autoFinishOnTime(){ const fb=$('#odFeedback'); if(fb){ fb.className='help err'; fb.textContent='انتهى الوقت — تقييم المرحلة…'; } odFinishStage(true); }
 function odFinishStage(fromTimeout=false){
   const stageId = od.order[od.stageIndex];
   const cfg=od.cfg, diff=(od.user?.difficulty)||'hard';
   const base = cfg.difficulty[diff] || cfg.difficulty.hard;
   const over = (cfg.stage_overrides && cfg.stage_overrides[stageId] && cfg.stage_overrides[stageId][diff]) || {};
   const minAcc = (over.min_accuracy_pct || base.min_accuracy_pct) / 100;
-
   const total = od.items.length;
   const correct = od.correct.filter(x=>x===true).length;
   const acc = (correct/total);
-
   let cipherOK = true;
   if(stageId==='E_CIPHER' && over.min_cipher_progress_pct){
     cipherOK = (acc >= (over.min_cipher_progress_pct/100));
   }
-
   const pass = (acc >= minAcc) && cipherOK;
-
   const w=getWallet();
   const coinsGain = Math.round(acc*30) + (pass?20:0);
   w.coins += coinsGain; setWallet(w);
-
   const sum = $('#odSummary');
-  sum.innerHTML = `
+  if(sum) sum.innerHTML = `
     <div class="card soft">
       <div><b>نتيجة المرحلة:</b> ${pass?'نجاح ✔︎':'إخفاق ✖︎'}</div>
       <div>الدقة: ${(acc*100).toFixed(0)}% — صحيحة: ${correct}/${total}</div>
@@ -249,7 +226,6 @@ function odFinishStage(fromTimeout=false){
     </div>
   `;
   stopTimer();
-
   if(pass){
     if(od.stageIndex < od.order.length-1){
       od.stageIndex++;
@@ -264,9 +240,309 @@ function odFinishStage(fromTimeout=false){
       $('#odStageName').textContent='انتهت الجولة 🎉';
     }
   }else{
-    $('#odFeedback').className='help err';
-    $('#odFeedback').textContent = 'يمكنك تعديل إجاباتك ثم الضغط "إنهاء المرحلة" مجددًا، أو الرجوع.';
+    const fb=$('#odFeedback'); if(fb){ fb.className='help err'; fb.textContent = 'يمكنك تعديل إجاباتك ثم الضغط "إنهاء المرحلة" مجددًا، أو الرجوع.'; }
   }
+}
+
+/* ========= Crossword (Newspaper 9×9) ========= */
+let cw = null;
+
+async function openCrossword(){
+  if(!activeId){ alert('اختر مستخدمًا أولًا'); return; }
+  try{
+    await loadCrossword();
+    showScreen('scrCrossword');
+  }catch(e){
+    console.error(e);
+    alert('تعذّر تحميل الكلمات المتقاطعة اليومية.');
+  }
+}
+
+async function loadCrossword(){
+  const r = await fetch('content/crossword_daily.json?v=' + Date.now());
+  const data = await r.json();
+  buildCrossword(data);
+}
+
+function buildCrossword(data){
+  cw = {
+    data,
+    size: data.gridSize || (data.grid?.[0]?.length || 9),
+    dir: 'across',
+    boardEl: $('#cwBoard'),
+    feedback: $('#cwFeedback'),
+    dateEl: $('#cwDate'),
+    cluesAcrossEl: $('#cwCluesAcross'),
+    cluesDownEl: $('#cwCluesDown'),
+    cells: [], // 2D
+    startMap: { across:new Map(), down:new Map() }, // 'r,c' -> n
+    coverMap: { across:new Map(), down:new Map() }, // 'r,c' -> n
+    slots: { across:[], down:[] }, // من ملف المحتوى
+    answers: { across: data.answers?.across||{}, down:data.answers?.down||{} },
+    current: null // {dir,n}
+  };
+
+  if(cw.dateEl) cw.dateEl.textContent = data.date || '—';
+
+  // تجهيز خرائط البداية/التغطية من clues
+  (data.clues?.across||[]).forEach(s=>{
+    cw.slots.across.push(s);
+    cw.startMap.across.set(`${s.r},${s.c}`, s.n);
+    for(let i=0;i<s.len;i++){
+      const key=`${s.r},${s.c+i}`;
+      cw.coverMap.across.set(key, s.n);
+    }
+  });
+  (data.clues?.down||[]).forEach(s=>{
+    cw.slots.down.push(s);
+    cw.startMap.down.set(`${s.r},${s.c}`, s.n);
+    for(let i=0;i<s.len;i++){
+      const key=`${s.r+i},${s.c}`;
+      cw.coverMap.down.set(key, s.n);
+    }
+  });
+
+  // رسم اللوح
+  const G = data.grid || Array.from({length:cw.size},()=>'.'.repeat(cw.size));
+  cw.boardEl.innerHTML = '';
+  cw.cells = Array.from({length:cw.size}, ()=>Array(cw.size).fill(null));
+
+  for(let r=0;r<cw.size;r++){
+    for(let c=0;c<cw.size;c++){
+      const ch = G[r][c];
+      const cell = document.createElement('div');
+      cell.className = 'cw-cell';
+      cell.dataset.r=r; cell.dataset.c=c;
+
+      const numAcross = cw.startMap.across.get(`${r},${c}`);
+      const numDown   = cw.startMap.down.get(`${r},${c}`);
+      const numberToShow = numAcross ?? numDown;
+
+      if(ch==='#'){
+        cell.classList.add('cw-block');
+      }else{
+        const inp = document.createElement('input');
+        inp.type='text'; inp.maxLength=1; inp.className='cw-letter'; inp.inputMode='text';
+        inp.addEventListener('input', (e)=>cwOnInput(e, r, c));
+        inp.addEventListener('keydown', (e)=>cwOnKey(e, r, c));
+        inp.addEventListener('focus', ()=>cwFocusCell(r,c));
+        cell.appendChild(inp);
+      }
+
+      if(numberToShow!=null){
+        const n = document.createElement('div');
+        n.className='cw-number';
+        n.textContent = numberToShow;
+        cell.appendChild(n);
+      }
+
+      cell.addEventListener('click', ()=>cwClickCell(r,c));
+      cw.boardEl.appendChild(cell);
+      cw.cells[r][c] = cell;
+    }
+  }
+
+  // قائمة التلميحات
+  if(cw.cluesAcrossEl){
+    cw.cluesAcrossEl.innerHTML = cw.slots.across.map(s=>`<li data-dir="across" data-n="${s.n}"><b>${s.n}.</b> ${escapeHtml(s.text||'')} <span class="help">(${s.len})</span></li>`).join('');
+    cw.cluesAcrossEl.addEventListener('click', e=>{
+      const li = e.target.closest('li'); if(!li) return;
+      cwSelectSlot('across', parseInt(li.dataset.n,10));
+    });
+  }
+  if(cw.cluesDownEl){
+    cw.cluesDownEl.innerHTML = cw.slots.down.map(s=>`<li data-dir="down" data-n="${s.n}"><b>${s.n}.</b> ${escapeHtml(s.text||'')} <span class="help">(${s.len})</span></li>`).join('');
+    cw.cluesDownEl.addEventListener('click', e=>{
+      const li = e.target.closest('li'); if(!li) return;
+      cwSelectSlot('down', parseInt(li.dataset.n,10));
+    });
+  }
+
+  // اختيار أول خانة متاحة
+  if(cw.slots.across.length){
+    cwSelectSlot('across', cw.slots.across[0].n);
+  }else if(cw.slots.down.length){
+    cwSelectSlot('down', cw.slots.down[0].n);
+  }
+}
+
+function cwKey(r,c){ return `${r},${c}`; }
+function cwGetSlot(dir,n){ return (cw.slots[dir]||[]).find(s=>s.n===n); }
+
+function cwClearHighlights(){
+  $$('.cw-highlight').forEach(el=>el.classList.remove('cw-highlight'));
+  $$('.cw-active').forEach(el=>el.classList.remove('cw-active'));
+  $$('#cwCluesAcross li, #cwCluesDown li').forEach(li=>li.classList.remove('active'));
+}
+
+function cwSelectSlot(dir,n){
+  cw.dir = dir;
+  cw.current = {dir, n};
+  cwClearHighlights();
+  const slot = cwGetSlot(dir,n);
+  if(!slot) return;
+
+  // تمييز الخلايا
+  for(let i=0;i<slot.len;i++){
+    const r = dir==='across' ? slot.r : slot.r + i;
+    const c = dir==='across' ? slot.c + i : slot.c;
+    const cell = cw.cells[r][c];
+    if(cell && !cell.classList.contains('cw-block')){
+      cell.classList.add('cw-highlight');
+    }
+  }
+
+  // تمييز التلميح
+  const ul = dir==='across' ? cw.cluesAcrossEl : cw.cluesDownEl;
+  if(ul){
+    const li = ul.querySelector(`li[data-n="${n}"]`);
+    if(li) li.classList.add('active');
+  }
+
+  // التركيز على أول خانة فارغة ضمن الكلمة
+  let focused=false;
+  for(let i=0;i<slot.len;i++){
+    const r = dir==='across' ? slot.r : slot.r + i;
+    const c = dir==='across' ? slot.c + i : slot.c;
+    const inp = cw.cells[r][c]?.querySelector('.cw-letter');
+    if(inp && !inp.value){ inp.focus(); focused=true; break; }
+  }
+  if(!focused){
+    const r = slot.r, c = slot.c;
+    const inp = cw.cells[r][c]?.querySelector('.cw-letter');
+    if(inp) inp.focus();
+  }
+}
+
+function cwClickCell(r,c){
+  const key=cwKey(r,c);
+  const nInDir = cw.coverMap[cw.dir].get(key);
+  if(nInDir!=null){
+    cwSelectSlot(cw.dir, nInDir);
+  }else{
+    // جرّب الاتجاه الآخر
+    const other = (cw.dir==='across')?'down':'across';
+    const nOther = cw.coverMap[other].get(key);
+    if(nOther!=null){
+      cwSelectSlot(other, nOther);
+    }
+  }
+}
+
+function cwFocusCell(r,c){
+  // إبراز الخلية الحالية
+  const cell = cw.cells[r][c];
+  if(!cell) return;
+  $$('.cw-active').forEach(el=>el.classList.remove('cw-active'));
+  cell.classList.add('cw-active');
+}
+
+function cwMove(step){
+  // move داخل الكلمة الحالية
+  const cur = cw.current; if(!cur) return;
+  const slot = cwGetSlot(cur.dir, cur.n); if(!slot) return;
+  const len = slot.len;
+  // موضع التركيز الحالي:
+  let idx = 0;
+  for(let i=0;i<len;i++){
+    const r = cur.dir==='across'? slot.r : slot.r+i;
+    const c = cur.dir==='across'? slot.c+i : slot.c;
+    const inp = cw.cells[r][c]?.querySelector('.cw-letter');
+    if(inp && inp===document.activeElement){ idx=i; break; }
+  }
+  let ni = Math.min(len-1, Math.max(0, idx+step));
+  const nr = cur.dir==='across'? slot.r : slot.r+ni;
+  const nc = cur.dir==='across'? slot.c+ni : slot.c;
+  const ninp = cw.cells[nr][nc]?.querySelector('.cw-letter');
+  if(ninp){ ninp.focus(); ninp.select?.(); }
+}
+
+function cwOnInput(e, r, c){
+  const v = e.target.value;
+  // أبقِ حرفًا واحدًا — عربي/إنجليزي، عالي الحالة
+  e.target.value = (v||'').slice(-1).toUpperCase();
+  cwMove(+1);
+}
+
+function cwOnKey(e, r, c){
+  const key=e.key;
+  if(key==='Backspace'){
+    if(e.target.value){ e.target.value=''; }
+    else cwMove(-1);
+    e.preventDefault();
+  }else if(key==='ArrowLeft'){ cw.dir='across'; cwMove(-1); e.preventDefault();
+  }else if(key==='ArrowRight'){ cw.dir='across'; cwMove(+1); e.preventDefault();
+  }else if(key==='ArrowUp'){ cw.dir='down'; cwMove(-1); e.preventDefault();
+  }else if(key==='ArrowDown'){ cw.dir='down'; cwMove(+1); e.preventDefault();
+  }else if(key==='Enter'){ cwCheckWord(); e.preventDefault(); }
+}
+
+function cwToggleDir(){
+  if(!cw||!cw.current) return;
+  const other = cw.dir==='across'?'down':'across';
+  // ابحث عن كلمة تغطي الخلية النشطة
+  const act = document.activeElement?.closest('.cw-cell');
+  if(act){
+    const r=+act.dataset.r, c=+act.dataset.c;
+    const n = cw.coverMap[other].get(cwKey(r,c));
+    if(n!=null){ cwSelectSlot(other,n); return; }
+  }
+  // fallback: أول كلمة في الاتجاه الآخر
+  const first = cw.slots[other][0];
+  if(first) cwSelectSlot(other, first.n);
+}
+
+function cwGetWordLetters(dir,n){
+  const slot = cwGetSlot(dir,n); if(!slot) return '';
+  let s='';
+  for(let i=0;i<slot.len;i++){
+    const r = dir==='across'? slot.r : slot.r+i;
+    const c = dir==='across'? slot.c+i : slot.c;
+    const inp = cw.cells[r][c]?.querySelector('.cw-letter');
+    s += (inp?.value||'');
+  }
+  return s;
+}
+
+function cwMarkSlot(dir,n,cls){
+  const slot = cwGetSlot(dir,n); if(!slot) return;
+  for(let i=0;i<slot.len;i++){
+    const r = dir==='across'? slot.r : slot.r+i;
+    const c = dir==='across'? slot.c+i : slot.c;
+    const cell = cw.cells[r][c];
+    if(!cell) continue;
+    cell.classList.remove('cw-correct','cw-wrong');
+    if(cls) cell.classList.add(cls);
+  }
+}
+
+function cwCheckWord(){
+  if(!cw||!cw.current) return;
+  const {dir,n} = cw.current;
+  const user = cwGetWordLetters(dir,n);
+  const ansDisp = cw.answers[dir][String(n)] || '';
+  // للتدقيق نستخدم normalize + مرادفات إن لزم
+  const ok = matchAnswer(user, ansDisp, ansDisp);
+  cwMarkSlot(dir,n, ok? 'cw-correct':'cw-wrong');
+  if(cw.feedback) cw.feedback.textContent = ok? '✔︎ كلمة صحيحة' : '✖︎ غير صحيحة';
+  if(ok){ const w=getWallet(); w.coins += 5; setWallet(w); }
+}
+
+function cwCheckAll(){
+  if(!cw) return;
+  let total=0, good=0;
+  ['across','down'].forEach(dir=>{
+    (cw.slots[dir]||[]).forEach(s=>{
+      total++;
+      const user = cwGetWordLetters(dir,s.n);
+      const ansDisp = cw.answers[dir][String(s.n)] || '';
+      const ok = matchAnswer(user, ansDisp, ansDisp);
+      cwMarkSlot(dir,s.n, ok? 'cw-correct':'cw-wrong');
+      if(ok) good++;
+    });
+  });
+  if(cw.feedback) cw.feedback.textContent = `النتيجة: ${good}/${total}`;
+  const w=getWallet(); w.coins += Math.round((good/Math.max(1,total))*20); setWallet(w);
 }
 
 /* ========= Store screen ========= */
@@ -290,12 +566,22 @@ window.saveUser = saveUser;
 window.enterAs = enterAs;
 window.delUser = delUser;
 window.cycleTheme = cycleTheme;
+
+// Odyssey
 window.startOdyssey = startOdyssey;
 window.odPrev = odPrev;
 window.odNext = odNext;
 window.odCheck = odCheck;
 window.odFinishStage = odFinishStage;
 window.odKey = odKey;
+
+// Store
 window.showStore = showStore;
 window.addDevCoins = addDevCoins;
 window.addDevGems = addDevGems;
+
+// Crossword
+window.openCrossword = openCrossword;
+window.cwToggleDir = cwToggleDir;
+window.cwCheckWord = cwCheckWord;
+window.cwCheckAll  = cwCheckAll;
