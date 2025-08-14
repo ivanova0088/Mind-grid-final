@@ -1,0 +1,60 @@
+{
+  "rotation_order": [
+    "A_HEXABLOOM",
+    "E_CIPHER",
+    "C_PATHMAZE",
+    "B_SPIRAL",
+    "D_ISLANDS"
+  ],
+  "daily_auto_rotate": true,
+  "seed_formula": "hash(YYYY-MM-DD + user_id)",
+  "difficulty": {
+    "easy": {
+      "time_sec": 300,
+      "min_accuracy_pct": 70
+    },
+    "medium": {
+      "time_sec": 240,
+      "min_accuracy_pct": 80
+    },
+    "hard": {
+      "time_sec": 210,
+      "min_accuracy_pct": 90
+    }
+  },
+  "stage_overrides": {
+    "A_HEXABLOOM": {
+      "hard": {
+        "time_sec": 200,
+        "min_accuracy_pct": 90
+      }
+    },
+    "E_CIPHER": {
+      "hard": {
+        "time_sec": 210,
+        "min_accuracy_pct": 92,
+        "min_cipher_progress_pct": 60
+      }
+    },
+    "C_PATHMAZE": {
+      "hard": {
+        "time_sec": 210,
+        "min_accuracy_pct": 88
+      }
+    },
+    "B_SPIRAL": {
+      "hard": {
+        "time_sec": 210,
+        "min_accuracy_pct": 88
+      }
+    },
+    "D_ISLANDS": {
+      "hard": {
+        "time_sec": 210,
+        "min_accuracy_pct": 88
+      }
+    }
+  },
+  "reuse_cooldown_days": 60,
+  "variants_per_clue": 3
+}
