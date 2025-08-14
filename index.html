@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=modA4">
+  <link rel="stylesheet" href="styles.css?v=modA6">
 
-  <!-- Fallback: دالّة تبديل الشاشات تعمل حتى لو لم يحمَّل الموديول بعد -->
+  <!-- Fallback بسيط لو تأخر تحميل الموديول -->
   <script>
     window._mgShow = function(id){
       document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -30,7 +30,6 @@
     <div class="card">
       <div class="row space-between">
         <h2 class="title">اختر مستخدمًا أو أضف جديدًا</h2>
-        <!-- إن كانت showScreen متاحة من الموديول تُستعمل؛ وإلا نستعمل _mgShow -->
         <button class="btn-primary" onclick="(window.showScreen||window._mgShow)('addUser')">إضافة مستخدم</button>
       </div>
       <div id="userList" class="grid-3"></div>
@@ -130,16 +129,20 @@
     </div>
   </section>
 
-  <!-- الكلمات المتقاطعة (مع Smart Dock) -->
+  <!-- الكلمات المتقاطعة -->
   <section id="scrCrossword" class="screen">
     <div class="card">
       <div class="row space-between">
-        <h2 class="title">الكلمات المتقاطعة (نمط Newspaper)</h2>
         <div class="row">
-          <span class="badge">📅 <b id="cwDate">—</b></span>
+          <button class="btn" onclick="(window.showScreen||window._mgShow)('games')">⬅︎ رجوع</button>
           <span class="badge">📏 9×9</span>
+          <span class="badge" id="cwDateBadge">📅 <b id="cwDate">—</b></span>
         </div>
+        <h2 class="title">الكلمات المتقاطعة (نمط Newspaper)</h2>
       </div>
+
+      <!-- شريط القصص لاختيار أي سؤال -->
+      <div id="cwStrip" class="cw-strip mt8" aria-label="اختَر تلميحًا"></div>
 
       <!-- تخطيط الشبكة + اللوح الذكي -->
       <div class="cw-layout mt8">
@@ -189,9 +192,6 @@
       </div>
 
       <div id="cwFeedback" class="help mt8"></div>
-      <div class="row mt8">
-        <button class="btn" onclick="(window.showScreen||window._mgShow)('games')">رجوع</button>
-      </div>
     </div>
 
     <!-- Bottom Sheet (قائمة البطاقات) -->
@@ -235,11 +235,11 @@
   </section>
 </main>
 
-  <!-- تحميل آمن + كسر كاش قوي -->
+<!-- تحميل آمن + كسر كاش قوي -->
 <script type="module">
   (async () => {
     try {
-      await import('./app.js?v=modA5');
+      await import('./app.js?v=modA6');
     } catch (err) {
       const box = document.createElement('div');
       box.style.cssText = 'position:fixed;inset:auto 0 0 0;background:#fee2e2;color:#b91c1c;padding:10px;border-top:1px solid #fca5a5;font:14px/1.5 system-ui';
