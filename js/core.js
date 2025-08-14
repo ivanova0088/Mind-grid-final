@@ -79,18 +79,27 @@ export async function boot(){
   // محفظة
   updateWalletUI();
 
-  // تعبئة الدول (select) من countries.json
+  // تعبئة الدول (select) من countries.json مع قائمة افتراضية عند الفشل
+  const fallbackCountries = [
+    "السعودية","الإمارات","قطر","الكويت","البحرين","عُمان",
+    "الأردن","لبنان","سوريا","العراق","مصر","ليبيا","الجزائر",
+    "تونس","المغرب","موريتانيا","السودان","اليمن","فلسطين"
+  ];
   try{
     const r=await fetch('countries.json?v='+Date.now(),{cache:'no-store'});
-    if(r.ok){
-      const arr=await r.json();
-      const sel=$('#countrySelect');
-      if(sel){
-        sel.innerHTML = `<option value="">— اختر الدولة —</option>` +
-          arr.map(c=>`<option value="${c}">${c}</option>`).join('');
-      }
+    const arr = r.ok ? await r.json() : fallbackCountries;
+    const sel=$('#countrySelect');
+    if(sel){
+      sel.innerHTML = `<option value="">— اختر الدولة —</option>` +
+        arr.map(c=>`<option value="${c}">${c}</option>`).join('');
     }
-  }catch(e){ console.warn('countries load',e); }
+  }catch{ // في حالة الخطأ
+    const sel=$('#countrySelect');
+    if(sel){
+      sel.innerHTML = `<option value="">— اختر الدولة —</option>` +
+        fallbackCountries.map(c=>`<option value="${c}">${c}</option>`).join('');
+    }
+  }
 
   // مستخدمون
   users=safeGet('mg_users',[]);
