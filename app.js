@@ -9,7 +9,8 @@ import {
 } from './js/odyssey.js';
 
 import {
-  openCrossword, cwToggleSheet, cwSetDir, cwPrev, cwNext, cwCheckWord, cwCheckAll
+  openCrossword, cwToggleSheet, cwSetDir, cwPrev, cwNext, cwCheckWord, cwCheckAll,
+  cwHintLetter, cwFlipDir, cwMarkLater, cwSearch, cwFilter
 } from './js/crossword.js';
 
 // اجعل الدوال متاحة لعناصر HTML (onclick/onsubmit…)
@@ -36,6 +37,12 @@ window.cwPrev         = cwPrev;
 window.cwNext         = cwNext;
 window.cwCheckWord    = cwCheckWord;
 window.cwCheckAll     = cwCheckAll;
+// === Smart Dock extras ===
+window.cwHintLetter   = cwHintLetter;
+window.cwFlipDir      = cwFlipDir;
+window.cwMarkLater    = cwMarkLater;
+window.cwSearch       = cwSearch;
+window.cwFilter       = cwFilter;
 
 // تشغيل التطبيق عند جاهزية DOM
 document.addEventListener('DOMContentLoaded', boot);
