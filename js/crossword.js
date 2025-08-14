@@ -1,4 +1,4 @@
-/* ========= crossword.js ========= */
+/* ========= crossword.js (Smart Dock) ========= */
 import { $, showScreen, escapeHtml, matchAnswer, getWallet, setWallet } from './core.js';
 
 /* شبكة احتياطية عند فشل ملف اليوم */
@@ -34,15 +34,15 @@ function buildCrossword(data){
     boardEl:$('#cwBoard'), feedback:$('#cwFeedback'), dateEl:$('#cwDate'),
     cells:[], startMap:{across:new Map(),down:new Map()}, coverMap:{across:new Map(),down:new Map()},
     slots:{across:[],down:[]}, answers:{across:data.answers?.across||{}, down:data.answers?.down||{}},
-    sheetIndex:0
+    sheetIndex:0, flags:new Map()
   };
   if(cw.dateEl) cw.dateEl.textContent=data.date||'—';
 
-  // خرائط الأرقام وبطاقات الأسئلة
   (data.clues?.across||[]).forEach(s=>{ cw.slots.across.push(s); cw.startMap.across.set(key(s.r,s.c),s.n); for(let i=0;i<s.len;i++) cw.coverMap.across.set(key(s.r,s.c+i),s.n); });
-  (data.clues?.down||[]).forEach(s=>{ cw.slots.down.push(s);   cw.startMap.down.set(key(s.r,s.c),s.n);   for(let i=0;i<s.len;i++) cw.coverMap.down.set(key(s.r+i,s.c),s.n); });
+  (data.clues?.down||[]).forEach(s=>{ cw.slots.down.push(s);   cw.startMap.down.set(key(s.r,s.c),s.n);   for(let i=0;i>s.len;i++){} }); // fix loop below
+  // correct down cover filling:
+  (data.clues?.down||[]).forEach(s=>{ for(let i=0;i<s.len;i++) cw.coverMap.down.set(key(s.r+i,s.c),s.n); });
 
-  // اللوح
   const G=data.grid||Array.from({length:cw.size},()=>'.'.repeat(cw.size));
   cw.boardEl.innerHTML=''; cw.cells=Array.from({length:cw.size},()=>Array(cw.size).fill(null));
   for(let r=0;r<cw.size;r++){
@@ -67,9 +67,10 @@ function buildCrossword(data){
   setDir('across');
   if(cw.slots.across.length) selectSlot('across', cw.slots.across[0].n);
   else if(cw.slots.down.length){ setDir('down'); selectSlot('down', cw.slots.down[0].n); }
+  renderCards(); // لقائمة البطاقات في الـSheet
 }
 
-/* ========== الورقة السفلية والبطاقات ========== */
+/* ========== الورقة السفلية والبطاقات (تبقى) ========== */
 const dirLabel = d => d==='across'?'أفقي':'عمودي';
 export function cwToggleSheet(){ const sh=$('#cwSheet'); sh.dataset.open = (sh.dataset.open==='1'?'0':'1'); }
 export function cwPrev(){ const list=cw.slots[cw.dir]; if(!list?.length) return; const i=Math.max(0,(cw.sheetIndex||0)-1); selectSlot(cw.dir,list[i].n); }
@@ -79,13 +80,14 @@ function setDir(d){
   cw.dir=d;
   $('#segAcross')?.classList.toggle('active', d==='across');
   $('#segDown')?.classList.toggle('active', d==='down');
+  $('#cwChipDir') && ($('#cwChipDir').textContent = dirLabel(d));
   renderCards();
 }
 function renderCards(){
   const list=cw.slots[cw.dir]||[];
   const cards=$('#cwCards'); if(!cards) return;
   cards.innerHTML=list.map((s,i)=>`
-    <div class="cw-card" data-idx="${i}" data-n="${s.n}">
+    <div class="cw-card ${flagClass(cw.dir,s.n)}" data-idx="${i}" data-n="${s.n}">
       <div class="cw-card-num">${s.n}</div>
       <div class="cw-card-text">${escapeHtml(s.text||'')}</div>
       <div class="cw-card-meta">${dirLabel(cw.dir)} • (${s.len})</div>
@@ -94,12 +96,35 @@ function renderCards(){
 }
 function syncSheet(dir,n){
   const list=cw.slots[dir]||[]; const idx=list.findIndex(s=>s.n===n); cw.sheetIndex=idx>=0?idx:0;
-  $('#cwChipDir').textContent=dirLabel(dir);
-  $('#cwChipNum').textContent=list[idx]?list[idx].n:'—';
-  $('#cwChipLen').textContent=list[idx]?`(${list[idx].len})`:'';
-  $('#cwClueText').textContent=list[idx]? (list[idx].text||'—') : '—';
+  $('#cwChipDir') && ($('#cwChipDir').textContent=dirLabel(dir));
+  $('#cwChipNum') && ($('#cwChipNum').textContent=list[idx]?list[idx].n:'—');
+  $('#cwChipLen') && ($('#cwChipLen').textContent=list[idx]?`(${list[idx].len})`:'');
+  $('#cwClueTextSheet') && ($('#cwClueTextSheet').textContent=list[idx]? (list[idx].text||'—') : '—');
   document.querySelectorAll('.cw-card').forEach(c=>c.classList.remove('active'));
   const card=document.querySelector(`#cwCards .cw-card[data-n="${n}"]`); if(card){ card.classList.add('active'); card.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); }
+}
+
+/* ========== Smart Dock ========== */
+function updateDock(dir,n){
+  const s=getSlot(dir,n); if(!s) return;
+  $('#dkDir').textContent = dirLabel(dir);
+  $('#dkNum').textContent = s.n;
+  $('#dkLen').textContent = `(${s.len})`;
+  $('#dkClueText').textContent = s.text || '—';
+  const status = cw.flags.get(flagKey(dir,n)) || 'new';
+  $('#dkStatus').textContent = status==='later' ? 'لاحقًا' : 'لم يُحلّ';
+  refreshProgressBoxes(dir,n);
+}
+function refreshProgressBoxes(dir,n){
+  const s=getSlot(dir,n); if(!s) return;
+  const boxes = [];
+  for(let i=0;i<s.len;i++){
+    const r=dir==='across'?s.r: s.r+i;
+    const c=dir==='across'?s.c+i: s.c;
+    const letter = cw.cells[r][c]?.querySelector('.cw-letter')?.value || '';
+    boxes.push(`<span class="dk-slot ${letter? 'filled':''}">${letter?escapeHtml(letter.toUpperCase()):' '}</span>`);
+  }
+  $('#dkSlots').innerHTML = boxes.join('');
 }
 
 /* ========== اختيار الخانات والكتابة ========== */
@@ -110,7 +135,7 @@ function clearHighlights(){
   document.querySelectorAll('.cw-active').forEach(el=>el.classList.remove('cw-active'));
 }
 function selectSlot(dir,n){
-  cw.dir=dir; syncSheet(dir,n); clearHighlights();
+  cw.dir=dir; syncSheet(dir,n); clearHighlights(); updateDock(dir,n);
   const s=getSlot(dir,n); if(!s) return;
 
   for(let i=0;i<s.len;i++){
@@ -153,13 +178,18 @@ function move(step){
   const nr=cw.dir==='across'?slot.r:slot.r+ni, nc=cw.dir==='across'?slot.c+ni:slot.c;
   const ninp=cw.cells[nr][nc]?.querySelector('.cw-letter'); if(ninp){ ninp.focus(); ninp.select?.(); }
 }
-function onInput(e){ const v=e.target.value; e.target.value=(v||'').slice(-1).toUpperCase(); move(+1); }
+function onInput(e){ const v=e.target.value; e.target.value=(v||'').slice(-1).toUpperCase(); refreshCurrentDock(); move(+1); }
 function onKey(e){
   const k=e.key;
-  if(k==='Backspace'){ if(e.target.value){ e.target.value=''; } else move(-1); e.preventDefault(); }
+  if(k==='Backspace'){ if(e.target.value){ e.target.value=''; } else move(-1); refreshCurrentDock(); e.preventDefault(); }
   else if(k==='ArrowLeft'||k==='ArrowUp'){ move(-1); e.preventDefault(); }
   else if(k==='ArrowRight'||k==='ArrowDown'){ move(+1); e.preventDefault(); }
   else if(k==='Enter'){ cwCheckWord(); e.preventDefault(); }
+}
+function refreshCurrentDock(){
+  const list=cw.slots[cw.dir]; if(!list?.length) return;
+  const n=list[cw.sheetIndex]?.n; if(n==null) return;
+  refreshProgressBoxes(cw.dir,n);
 }
 
 /* ========== التحقق ========== */
@@ -186,16 +216,59 @@ export function cwCheckWord(){
   notify(ok?'✔︎ كلمة صحيحة':'✖︎ غير صحيحة');
   if(ok){ const w=getWallet(); w.coins+=5; setWallet(w); }
 }
-export function cwCheckAll(){
-  let total=0,good=0;
-  ['across','down'].forEach(dir=>{
-    (cw.slots[dir]||[]).forEach(s=>{
-      total++; const ok=matchAnswer(getWordLetters(dir,s.n), cw.answers[dir][String(s.n)]||'', '');
-      markSlot(dir,s.n,ok?'cw-correct':'cw-wrong'); if(ok) good++;
-    });
+
+/* ========== تلميحات ووسوم ========== */
+const flagKey=(dir,n)=>`${dir}:${n}`;
+const flagClass=(dir,n)=> (cw.flags.get(flagKey(dir,n))==='later'?'flag-later':'');
+export function cwMarkLater(){
+  const dir=cw.dir; const n=cw.slots[dir][cw.sheetIndex]?.n; if(n==null) return;
+  const k=flagKey(dir,n);
+  cw.flags.set(k, cw.flags.get(k)==='later' ? 'new' : 'later');
+  updateDock(dir,n); renderCards();
+}
+export function cwHintLetter(){
+  const dir=cw.dir; const n=cw.slots[dir][cw.sheetIndex]?.n; if(n==null) return;
+  const s=getSlot(dir,n); const ans=(cw.answers[dir][String(n)]||'').toUpperCase(); if(!s||!ans) return;
+  const w=getWallet(); if((w.coins||0)<10){ notify('لا توجد عملات كافية'); return; }
+  // أول خانة فارغة
+  for(let i=0;i<s.len;i++){
+    const r=dir==='across'?s.r: s.r+i, c=dir==='across'?s.c+i: s.c;
+    const inp=cw.cells[r][c]?.querySelector('.cw-letter');
+    if(inp && !inp.value){
+      inp.value = ans[i]||''; setWallet({...w, coins:w.coins-10}); break;
+    }
+  }
+  refreshCurrentDock();
+}
+export function cwFlipDir(){
+  // اعثر على الخلية النشطة وحاول اختيار الكلمة المتقاطعة في الاتجاه الآخر
+  const active=document.querySelector('.cw-active'); if(!active){ setDir(cw.dir==='across'?'down':'across'); cwNext(); return; }
+  const r=+active.dataset.r, c=+active.dataset.c;
+  const other=cw.dir==='across'?'down':'across';
+  const nOther=cw.coverMap[other].get(key(r,c));
+  if(nOther!=null){ setDir(other); selectSlot(other,nOther); }
+  else{ setDir(other); cwNext(); }
+}
+
+/* ========== بحث/فلترة ========== */
+export function cwSearch(q){
+  q=(q||'').trim();
+  const cards=$('#cwCards'); if(!cards) return;
+  const nodes=[...cards.querySelectorAll('.cw-card')];
+  let first=null;
+  nodes.forEach(n=>{
+    const text=(n.querySelector('.cw-card-text')?.textContent||'');
+    const show = !q || text.includes(q);
+    n.style.display = show ? '' : 'none';
+    if(show && !first) first=n;
   });
-  notify(`النتيجة: ${good}/${total}`);
-  const w=getWallet(); w.coins+=Math.round((good/Math.max(1,total))*20); setWallet(w);
+  if(first){ first.classList.add('active'); first.scrollIntoView({behavior:'smooth',block:'nearest'}); nodes.forEach(n=>{ if(n!==first) n.classList.remove('active'); }); }
+}
+export function cwFilter(mode){
+  if(mode==='all'){ /* لا شيء */ }
+  else if(mode==='across'){ setDir('across'); }
+  else if(mode==='down'){ setDir('down'); }
+  renderCards();
 }
 
 /* ========== مساعدات صغيرة ========== */
