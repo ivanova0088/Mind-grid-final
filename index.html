@@ -5,7 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MindGrid – شبكة العقول</title>
   <meta name="theme-color" content="#ffffff">
-  <link rel="stylesheet" href="styles.css?v=modA2">
+  <link rel="stylesheet" href="styles.css?v=modA3">
+
+  <!-- Fallback: دالّة تبديل الشاشات تعمل حتى لو الموديول لم يُحمَّل -->
+  <script>
+    window._mgShow = function(id){
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      var el = document.getElementById(id); if(el) el.classList.add('active');
+    };
+  </script>
 </head>
 <body>
 
@@ -13,7 +21,7 @@
   <div class="logo">MG</div>
   <h1>MindGrid – شبكة العقول</h1>
   <div class="spacer"></div>
-  <button class="btn" title="تبديل الثيم" onclick="cycleTheme()">🎨</button>
+  <button class="btn" title="تبديل الثيم" onclick="(window.cycleTheme||function(){})()">🎨</button>
 </header>
 
 <main>
@@ -22,7 +30,8 @@
     <div class="card">
       <div class="row space-between">
         <h2 class="title">اختر مستخدمًا أو أضف جديدًا</h2>
-        <button class="btn-primary" onclick="showScreen('addUser')">إضافة مستخدم</button>
+        <!-- استخدم showScreen إن وُجدت، وإلا استخدم _mgShow الاحتياطية -->
+        <button class="btn-primary" onclick="(window.showScreen||window._mgShow)('addUser')">إضافة مستخدم</button>
       </div>
       <div id="userList" class="grid-3"></div>
     </div>
@@ -57,8 +66,8 @@
         </div>
       </div>
       <div class="row end mt8">
-        <button class="btn" onclick="showScreen('userSelect')">رجوع</button>
-        <button class="btn-primary" onclick="saveUser()">حفظ وإنهاء</button>
+        <button class="btn" onclick="(window.showScreen||window._mgShow)('userSelect')">رجوع</button>
+        <button class="btn-primary" onclick="(window.saveUser||function(){})(); (window.showScreen||window._mgShow)('games')">حفظ وإنهاء</button>
       </div>
     </div>
   </section>
@@ -68,10 +77,10 @@
     <div class="card">
       <h2 class="title">اختر وضع اللعب</h2>
       <div class="grid-3">
-        <button class="btn-primary" onclick="startOdyssey()">🚀 مسار الأوديسي (٥ مراحل)</button>
-        <button class="btn" onclick="openCrossword()">📰 الكلمات المتقاطعة 9×9</button>
-        <button class="btn" onclick="showScreen('scrStore')">🛍️ المتجر</button>
-        <button class="btn" onclick="showScreen('userSelect')">تبديل المستخدم</button>
+        <button class="btn-primary" onclick="(window.startOdyssey||function(){})()">🚀 مسار الأوديسي (٥ مراحل)</button>
+        <button class="btn" onclick="(window.openCrossword||function(){})()">📰 الكلمات المتقاطعة 9×9</button>
+        <button class="btn" onclick="(window.showScreen||window._mgShow)('scrStore')">🛍️ المتجر</button>
+        <button class="btn" onclick="(window.showScreen||window._mgShow)('userSelect')">تبديل المستخدم</button>
       </div>
     </div>
   </section>
@@ -96,7 +105,7 @@
       <div class="grid-2 mt8">
         <div>
           <label>إجابتك</label>
-          <input id="odAnswer" class="input" type="text" placeholder="اكتب الإجابة هنا" onkeydown="odKey(event)">
+          <input id="odAnswer" class="input" type="text" placeholder="اكتب الإجابة هنا" onkeydown="(window.odKey||function(){})(event)">
         </div>
         <div class="od-meta">
           <div class="help">المجال:</div>
@@ -107,21 +116,21 @@
       </div>
 
       <div class="row center mt8">
-        <button class="btn" onclick="odPrev()">◀︎ السابق</button>
-        <button class="btn" onclick="odCheck()">تحقق</button>
-        <button class="btn" onclick="odNext()">التالي ▶︎</button>
-        <button class="btn-primary" onclick="odFinishStage()">إنهاء المرحلة</button>
+        <button class="btn" onclick="(window.odPrev||function(){})()">◀︎ السابق</button>
+        <button class="btn" onclick="(window.odCheck||function(){})()">تحقق</button>
+        <button class="btn" onclick="(window.odNext||function(){})()">التالي ▶︎</button>
+        <button class="btn-primary" onclick="(window.odFinishStage||function(){})()">إنهاء المرحلة</button>
       </div>
 
       <div id="odFeedback" class="mt8 help"></div>
       <div id="odSummary" class="mt8"></div>
       <div class="row mt8">
-        <button class="btn" onclick="showScreen('games')">رجوع</button>
+        <button class="btn" onclick="(window.showScreen||window._mgShow)('games')">رجوع</button>
       </div>
     </div>
   </section>
 
-  <!-- الكلمات المتقاطعة (مع Smart Dock) -->
+  <!-- الكلمات المتقاطعة + Smart Dock (التخطيط كما أرسلته سابقًا) -->
   <section id="scrCrossword" class="screen">
     <div class="card">
       <div class="row space-between">
@@ -132,7 +141,6 @@
         </div>
       </div>
 
-      <!-- تخطيط الشبكة + اللوح الذكي -->
       <div class="cw-layout mt8">
         <div id="cwBoard" class="cw-grid" aria-label="لوحة الكلمات المتقاطعة"></div>
 
@@ -157,23 +165,23 @@
           </div>
 
           <div class="dk-actions">
-            <button class="btn" onclick="cwPrev()">◀︎ السابق</button>
-            <button class="btn" onclick="cwCheckWord()">تحقق</button>
-            <button class="btn" onclick="cwNext()">التالي ▶︎</button>
+            <button class="btn" onclick="(window.cwPrev||function(){})()">◀︎ السابق</button>
+            <button class="btn" onclick="(window.cwCheckWord||function(){})()">تحقق</button>
+            <button class="btn" onclick="(window.cwNext||function(){})()">التالي ▶︎</button>
           </div>
 
           <div class="dk-actions alt">
-            <button class="btn" onclick="cwHintLetter()">حرف (−10 🪙)</button>
-            <button class="btn" onclick="cwFlipDir()">قلب الاتجاه</button>
-            <button class="btn" onclick="cwMarkLater()">لاحقًا</button>
+            <button class="btn" onclick="(window.cwHintLetter||function(){})()">حرف (−10 🪙)</button>
+            <button class="btn" onclick="(window.cwFlipDir||function(){})()">قلب الاتجاه</button>
+            <button class="btn" onclick="(window.cwMarkLater||function(){})()">لاحقًا</button>
           </div>
 
           <div class="dk-footer">
-            <input id="dkSearch" class="input" type="search" placeholder="ابحث في التلميحات…" oninput="cwSearch(this.value)">
+            <input id="dkSearch" class="input" type="search" placeholder="ابحث في التلميحات…" oninput="(window.cwSearch||function(){})(this.value)">
             <div class="dk-filters">
-              <button class="chip" onclick="cwFilter('all')">الكل</button>
-              <button class="chip" onclick="cwFilter('across')">أفقي</button>
-              <button class="chip" onclick="cwFilter('down')">عمودي</button>
+              <button class="chip" onclick="(window.cwFilter||function(){})('all')">الكل</button>
+              <button class="chip" onclick="(window.cwFilter||function(){})('across')">أفقي</button>
+              <button class="chip" onclick="(window.cwFilter||function(){})('down')">عمودي</button>
             </div>
           </div>
         </aside>
@@ -181,13 +189,13 @@
 
       <div id="cwFeedback" class="help mt8"></div>
       <div class="row mt8">
-        <button class="btn" onclick="showScreen('games')">رجوع</button>
+        <button class="btn" onclick="(window.showScreen||window._mgShow)('games')">رجوع</button>
       </div>
     </div>
 
-    <!-- Bottom Sheet القديمة (قائمة البطاقات) تبقى متاحة -->
+    <!-- الـBottom Sheet للبطاقات يبقى كما هو (يمكنك إبقاءه أو حذفه لاحقًا) -->
     <div class="cw-sheet" id="cwSheet" data-open="0">
-      <div class="cw-sheet-handle" onclick="cwToggleSheet()">
+      <div class="cw-sheet-handle" onclick="(window.cwToggleSheet||function(){})()">
         <div id="cwChipDir" class="chip">أفقي</div>
         <div id="cwChipNum" class="chip">1</div>
         <div id="cwChipLen" class="chip">(5)</div>
@@ -195,15 +203,15 @@
       </div>
       <div class="cw-sheet-body">
         <div class="seg">
-          <button id="segAcross" class="seg-btn active" onclick="cwSetDir('across')">أفقي</button>
-          <button id="segDown" class="seg-btn" onclick="cwSetDir('down')">عمودي</button>
+          <button id="segAcross" class="seg-btn active" onclick="(window.cwSetDir||function(){})('across')">أفقي</button>
+          <button id="segDown" class="seg-btn" onclick="(window.cwSetDir||function(){})('down')">عمودي</button>
         </div>
         <div class="cw-cards" id="cwCards"></div>
         <div class="row center mt8">
-          <button class="btn" onclick="cwPrev()">◀︎</button>
-          <button class="btn" onclick="cwCheckWord()">تحقق (كلمة)</button>
-          <button class="btn" onclick="cwNext()">▶︎</button>
-          <button class="btn" onclick="cwCheckAll()">تحقق الكل</button>
+          <button class="btn" onclick="(window.cwPrev||function(){})()">◀︎</button>
+          <button class="btn" onclick="(window.cwCheckWord||function(){})()">تحقق (كلمة)</button>
+          <button class="btn" onclick="(window.cwNext||function(){})()">▶︎</button>
+          <button class="btn" onclick="(window.cwCheckAll||function(){})()">تحقق الكل</button>
         </div>
       </div>
     </div>
@@ -215,18 +223,18 @@
       <h2 class="title">المتجر</h2>
       <div class="row">
         المحفظة: 🪙 <b id="wCoins">0</b> • 💎 <b id="wGems">0</b>
-        <button class="btn" onclick="addDevCoins()">(+100 للتجربة)</button>
-        <button class="btn" onclick="addDevGems()">(+10 للتجربة)</button>
+        <button class="btn" onclick="(window.addDevCoins||function(){})()">(+100 للتجربة)</button>
+        <button class="btn" onclick="(window.addDevGems||function(){})()">(+10 للتجربة)</button>
       </div>
       <div class="help mt8">لاحقًا سنضيف عناصر وميزات تُشترى بالعملات/الجواهر.</div>
       <div class="row mt8">
-        <button class="btn" onclick="showScreen('games')">رجوع</button>
+        <button class="btn" onclick="(window.showScreen||window._mgShow)('games')">رجوع</button>
       </div>
     </div>
   </section>
 </main>
 
 <!-- نقطة الدخول (ES Modules) -->
-<script type="module" src="app.js?v=modA2"></script>
+<script type="module" src="./app.js?v=modA3"></script>
 </body>
 </html>
